@@ -1,0 +1,47 @@
+# Both suites, on every push and pull request. Neither touches the network: the
+# datasets are committed, and the builders' tests use no downloads.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The floor pyproject.toml declares, and the version developed on.
+        python-version: ["3.10", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e ".[test]"
+      - run: python -m pytest -q
+      # Every shipped dataset, through the same validator a builder runs.
+      - run: treequiz validate --all
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      # npm 11 writes the lockfile here, and Node 22's bundled npm 10 has
+      # rejected one it wrote (TaxoQuiz, Sep 2026).
+      - run: npm install -g npm@11
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npm test -- --run
+      - run: npm run build

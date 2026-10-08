@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- TaxoQuiz's icon: a cladogram with one leaf found. Full-bleed paper so it
+  <!-- TreeQuiz's icon, inherited from TaxoQuiz: a cladogram with one leaf found. Full-bleed paper so it
        works as a maskable icon and on iOS, which fills transparency with black;
        the drawing stays inside the central 80% circle a mask may cut to. Ink
        and paper are theme.ts's; the found leaf is the green end of the ramp,
