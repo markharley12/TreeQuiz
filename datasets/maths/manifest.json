@@ -1,0 +1,32 @@
+{
+  "title": "Fields of mathematics",
+  "short_title": "Maths",
+  "prompt": "Guess the secret field of mathematics by where it sits in the subject.",
+  "blurb": "About 500 research fields, from graph theory to general relativity, as the Mathematics Subject Classification files them.",
+  "noun": "field",
+  "noun_plural": "fields",
+  "ladder": {
+    "levels": {"mathematics": 0, "branch": 1, "area": 2, "subject": 3, "section": 4},
+    "top": 4
+  },
+  "bulk_unlock": 0.5,
+  "info_source": "MSC2020",
+  "sources": [
+    {
+      "name": "MSC2020 — Mathematics Subject Classification",
+      "url": "https://msc2020.org",
+      "licence": "CC BY-NC-SA 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+      "note": "By zbMATH Open and Mathematical Reviews. Subjects, sections and topics as published; the branches and areas above the subjects are TreeQuiz's own grouping, and some section names are qualified with their subject."
+    }
+  ],
+  "checks": {
+    "closer": [
+      {"to": "05Cxx", "order": ["05Axx", "03Exx", "11Axx"]},
+      {"to": "35Jxx", "order": ["35Kxx", "34Bxx", "46Bxx", "53Cxx"]},
+      {"to": "76Fxx", "order": ["76Dxx", "74Jxx", "81Txx", "62Fxx", "14Hxx"]},
+      {"to": "11Mxx", "order": ["11Nxx", "14Gxx", "30Dxx"]},
+      {"to": "20Dxx", "order": ["20Bxx", "22Exx", "13Axx", "60Gxx"]}
+    ]
+  }
+}

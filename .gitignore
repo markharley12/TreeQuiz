@@ -1,0 +1,12 @@
+# Anchored on purpose: an unanchored rule also matches nested directories of the
+# same name, which is how TaxoQuiz once dropped its packaged data from a wheel.
+/.venv/
+/dist/
+/build/
+# Downloads made by datagen/ — the sources a dataset is built from. Regenerable,
+# and some are large; the built dataset under datasets/ is what is committed.
+/datagen/_cache/
+__pycache__/
+*.pyc
+node_modules/
+.claude/
