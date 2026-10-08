@@ -1,0 +1,566 @@
+import { useState, useEffect } from 'react'
+import {
+  Box, Typography, Chip, Stack, CircularProgress, Button, TextField, Tooltip, Alert,
+  Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, IconButton, Link,
+} from '@mui/material'
+import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined'
+import { useCoarsePointer, useNarrow } from './media'
+import GuessInput from './components/GuessInput'
+import GuessList from './components/GuessList'
+import GameTree from './components/GameTree'
+import ExploreTree from './components/ExploreTree'
+import SettingsMenu from './components/SettingsMenu'
+import DatasetPicker from './components/DatasetPicker'
+import { datasetForSeed, fetchGameState, startRound, type TreeNode } from './api'
+import { useSettings, setSetting } from './settings'
+import { FONT_DISPLAY, PAGE_PAD, TREE_BLEED } from './theme'
+import { displayName } from './names'
+import { bulkScope, closestGuess, describeClosest, hintAvailable, hintCost } from './endgame'
+import { entryFor, storageKey } from './engine/datasets'
+import { normalise } from './engine/seed'
+import type { Manifest } from './engine/tree'
+import { readLink, shareBase, shareLink, withoutLink } from './shareLink'
+import { bulkUnlock, noun, shortTitle } from './words'
+
+type Mode = 'daily' | 'practice' | 'explore'
+type RoundMode = Exclude<Mode, 'explore'>
+
+interface SavedSession {
+  mode: RoundMode
+  secret: string
+  seed: string
+  guesses: string[]
+  won: boolean
+  /** Gave up and asked for the answer. Persisted, or a reload would hand the
+   *  round back with the answer already spent. */
+  revealed: boolean
+  /** Hints bought, and what they added to the score. Kept apart because a
+   *  hint's cost depends on the score when it was taken. */
+  hints?: number
+  hintPoints?: number
+  date: string
+}
+
+const today = () => new Date().toISOString().slice(0, 10)
+
+/** Each tree keeps its own round, so switching tree and back loses nothing. */
+const sessionKey = (dataset: string) => storageKey('session', dataset)
+/** Whether a tree was last left in explore, which a reload should return to.
+ *  Kept apart from the round, so exploring never overwrites one. */
+const viewKey = (dataset: string) => storageKey('view', dataset)
+
+function readSession(dataset: string): SavedSession | null {
+  try {
+    const raw = localStorage.getItem(sessionKey(dataset))
+    if (!raw) return null
+    const saved: SavedSession = JSON.parse(raw)
+    if (saved.mode === 'daily' && saved.date !== today()) return null
+    return saved
+  } catch {
+    return null
+  }
+}
+
+function readView(dataset: string): string | null {
+  try {
+    return localStorage.getItem(viewKey(dataset))
+  } catch {
+    return null
+  }
+}
+
+function writeStorage(key: string, value: string | null) {
+  try {
+    if (value === null) localStorage.removeItem(key)
+    else localStorage.setItem(key, value)
+  } catch {
+    // Private browsing, or storage full: the round still plays, it just will
+    // not survive a reload.
+  }
+}
+
+/** The same seed however it was typed; false for anything not a seed. */
+function sameSeed(a: string, b: string): boolean {
+  try {
+    return normalise(a) === normalise(b)
+  } catch {
+    return false
+  }
+}
+
+/** A round worth asking about before a link replaces it, and worth offering
+ *  to resume: something in it, and not over. */
+function inProgress(s: SavedSession | null): s is SavedSession {
+  return s !== null && !s.won && !s.revealed && (s.guesses.length > 0 || (s.hints ?? 0) > 0)
+}
+
+interface Boot {
+  saved: SavedSession | null
+  mode: Mode | null
+  linked: string | null
+  ask: boolean
+}
+
+/** Where a round starts. A carried seed — from a link, or a seed pasted on
+ *  another tree — resumes a round that is already that seed, asks before
+ *  replacing one in progress, and otherwise starts fresh with nothing restored,
+ *  or the old round's tree request would race the new one's start. */
+function readBoot(dataset: string, carried: string | null, landing: boolean): Boot {
+  const saved = readSession(dataset)
+  if (carried !== null && !(saved && sameSeed(saved.seed, carried))) {
+    if (inProgress(saved)) return { saved, mode: saved.mode, linked: carried, ask: true }
+    return { saved: null, mode: null, linked: carried, ask: false }
+  }
+  if (landing) return { saved, mode: null, linked: null, ask: false }
+  if (readView(dataset) === 'explore') return { saved, mode: 'explore', linked: null, ask: false }
+  return { saved, mode: saved?.mode ?? null, linked: null, ask: false }
+}
+
+interface Nav {
+  /** Show the front page rather than resuming, after a tree is picked there. */
+  landing: boolean
+  /** A seed to start on arrival. */
+  seed: string | null
+}
+
+export default function App() {
+  const { dataset } = useSettings()
+  // The link's seed goes to the first round only; later switches carry their own.
+  const [nav, setNav] = useState<Nav>(() => ({ landing: false, seed: readLink(window.location.search).seed }))
+  const manifest = entryFor(dataset)?.manifest
+
+  useEffect(() => {
+    if (manifest) document.title = `${shortTitle(manifest)} — TreeQuiz`
+  }, [manifest])
+
+  function switchTo(id: string, next: Nav) {
+    setNav(next)
+    setSetting('dataset', id)
+  }
+
+  if (!manifest) return <Alert severity="error" sx={{ m: 3 }}>No datasets in this build.</Alert>
+  // Keyed on the dataset, so a switch mounts a fresh round that reads its own
+  // saved state, rather than one round's state leaking into another tree.
+  return <Round key={dataset} dataset={dataset} manifest={manifest} nav={nav} onSwitch={switchTo} />
+}
+
+interface RoundProps {
+  dataset: string
+  manifest: Manifest
+  nav: Nav
+  onSwitch: (id: string, next: Nav) => void
+}
+
+function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
+  const [boot] = useState(() => readBoot(dataset, nav.seed, nav.landing))
+  const saved = boot.saved
+  const [mode, setMode] = useState<Mode | null>(boot.mode)
+  // The mode of the round in memory, which the front page can resume.
+  const [roundMode, setRoundMode] = useState<RoundMode | null>(saved?.mode ?? null)
+  const [secret, setSecret] = useState<string | null>(saved?.secret ?? null)
+  const [seed, setSeed] = useState<string>(saved?.seed ?? '')
+  const [seedInput, setSeedInput] = useState('')
+  const narrow = useNarrow()
+  const canShareSheet = useCoarsePointer() && typeof navigator.share === 'function'
+  const [seedError, setSeedError] = useState<string | null>(null)
+  // When a rejected seed belongs to another tree: which, to offer playing it there.
+  const [seedElsewhere, setSeedElsewhere] = useState<{ id: string; seed: string } | null>(null)
+  const [pendingLink, setPendingLink] = useState<string | null>(boot.ask ? boot.linked : null)
+  const [copied, setCopied] = useState(false)
+  const [guesses, setGuesses] = useState<string[]>(saved?.guesses ?? [])
+  const [treeData, setTreeData] = useState<TreeNode | null>(null)
+  const [won, setWon] = useState(saved?.won ?? false)
+  const [revealed, setRevealed] = useState(saved?.revealed ?? false)
+  const [confirmGiveUp, setConfirmGiveUp] = useState(false)
+  const [hints, setHints] = useState(saved?.hints ?? 0)
+  const [hintPoints, setHintPoints] = useState(saved?.hintPoints ?? 0)
+  const [confirmHint, setConfirmHint] = useState(false)
+  // What the tree should bring into view when it changes: the newest guess, or
+  // after a hint the ??? node, which is what the hint moved.
+  const [hintFocus, setHintFocus] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [treeLoaded, setTreeLoaded] = useState(false)
+  const leaf = noun(manifest)
+
+  // On mount: take a link out of the address, so a reload resumes the round
+  // rather than offering to restart it, and start a carried round if nothing
+  // needs asking first.
+  useEffect(() => {
+    const link = readLink(window.location.search)
+    if (link.seed !== null || link.dataset !== null) {
+      window.history.replaceState(window.history.state, '', withoutLink(window.location.href))
+    }
+    if (boot.linked !== null && !boot.ask) void startGame('practice', boot.linked)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Draw a resumed round's tree. A round with only hints has one too.
+  const playing = mode === 'daily' || mode === 'practice'
+  const needsTree = playing && !treeLoaded && secret !== null && (guesses.length > 0 || hints > 0)
+  useEffect(() => {
+    if (!needsTree) return
+    let cancelled = false
+    fetchGameState(dataset, secret!, guesses, hints)
+      .then((state) => { if (!cancelled) setTreeData(state) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setTreeLoaded(true) })
+    return () => { cancelled = true }
+  }, [needsTree]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist the round whenever it changes, and which view the tree was left in.
+  useEffect(() => {
+    if (roundMode && secret) {
+      const session: SavedSession = {
+        mode: roundMode, secret, seed, guesses, won, revealed, hints, hintPoints, date: today(),
+      }
+      writeStorage(sessionKey(dataset), JSON.stringify(session))
+    }
+  }, [dataset, roundMode, secret, seed, guesses, won, revealed, hints, hintPoints])
+  useEffect(() => {
+    writeStorage(viewKey(dataset), mode === 'explore' ? 'explore' : null)
+  }, [dataset, mode])
+
+  async function startGame(selected: RoundMode, sharedSeed?: string) {
+    setSeedError(null)
+    setSeedElsewhere(null)
+    setLoading(true)
+    try {
+      const round = await startRound(dataset, { daily: selected === 'daily', seed: sharedSeed })
+      setMode(selected)
+      setRoundMode(selected)
+      setGuesses([])
+      setTreeData(null)
+      setTreeLoaded(true)
+      setWon(false)
+      setRevealed(false)
+      setHints(0)
+      setHintPoints(0)
+      setSecret(round.secret)
+      setSeed(round.seed)
+    } catch (e) {
+      // A rejected seed must leave the current round alone rather than
+      // half-start one — and if it belongs to another tree, say which.
+      const there = sharedSeed === undefined ? null : await datasetForSeed(sharedSeed)
+      const other = there && there !== dataset ? entryFor(there) : undefined
+      if (other) {
+        setSeedError(`That seed is for ${shortTitle(other.manifest)}, a different tree.`)
+        setSeedElsewhere({ id: other.id, seed: sharedSeed!.trim() })
+      } else {
+        setSeedError(e instanceof Error ? e.message : 'Could not start that round')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function guessAll(labels: string[]) {
+    const next = [...guesses, ...labels]
+    setGuesses(next)
+    // This fetch is the tree from now on; the resume fetch must not race it.
+    setTreeLoaded(true)
+    setHintFocus(false)
+    setTreeData(await fetchGameState(dataset, secret!, next, hints))
+    if (secret !== null && labels.includes(secret)) setWon(true)
+  }
+
+  // A hint shows one more node of the answer's lineage and costs the score again
+  // (at least 10). The count goes to the engine; the points stay here, since
+  // only the client knows what the score was when each hint was bought.
+  async function takeHint() {
+    setConfirmHint(false)
+    setHintFocus(true)
+    const next = hints + 1
+    setHintPoints(hintPoints + hintCost(guesses.length + hintPoints))
+    setHints(next)
+    setTreeLoaded(true)
+    setTreeData(await fetchGameState(dataset, secret!, guesses, next))
+  }
+
+  // A link on the web; on a phone the share sheet, which is how a phone sends
+  // anything; elsewhere the clipboard, since a desktop share sheet is patchy.
+  async function shareRound() {
+    const text = shareLink(shareBase(window.location.href), dataset, seed)
+    if (canShareSheet) {
+      try {
+        await navigator.share({ url: text })
+      } catch {
+        // Dismissed, most likely. Nothing to undo.
+      }
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      return   // clipboard is blocked outside a secure context; the seed is on screen anyway
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  // Back to the front page. The round stays saved, and the front page offers it.
+  function goHome() {
+    setMode(null)
+  }
+
+  function resume() {
+    if (roundMode) setMode(roundMode)
+  }
+
+  // From the settings menu, mid-round: the round is saved under its own tree,
+  // so switching costs nothing and switching back resumes it.
+  function selectDataset(id: string) {
+    if (id !== dataset) onSwitch(id, { landing: mode === null, seed: null })
+  }
+
+  const header = (chip: string, extra?: React.ReactNode) => (
+    // One row on a phone: a spacer holds the controls at the far end, and
+    // "Change mode" becomes an icon, which is what makes the row fit 412px.
+    <Stack direction="row" spacing={{ xs: 0.5, sm: 2 }} sx={{ mb: { xs: 1, sm: 2 }, alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
+      <Typography variant="h4" sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>{shortTitle(manifest)}</Typography>
+      <Chip label={chip} size="small" variant="outlined" />
+      {extra}
+      <Box sx={{ flex: 1, minWidth: 0 }} />
+      {narrow ? (
+        <Tooltip title="Home">
+          <IconButton size="small" aria-label="Home" onClick={goHome}><HomeOutlinedIcon /></IconButton>
+        </Tooltip>
+      ) : (
+        <Button size="small" variant="text" sx={{ whiteSpace: 'nowrap' }} onClick={goHome}>Home</Button>
+      )}
+      <SettingsMenu onSelectDataset={selectDataset} />
+    </Stack>
+  )
+
+  const resumable = roundMode !== null && secret !== null && !won && !revealed && (guesses.length > 0 || hints > 0)
+
+  if (loading) return (
+    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}><CircularProgress /></Box>
+  )
+
+  if (mode === null) return (
+    <Box sx={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', p: { xs: 2, sm: 3 } }}>
+      <Box sx={{ width: '100%', maxWidth: 760 }}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'center', mb: 0.5 }}>
+          <Typography variant="h2" sx={{ fontSize: { xs: '2.6rem', sm: '3.4rem' } }}>TreeQuiz</Typography>
+          <SettingsMenu onSelectDataset={selectDataset} />
+        </Stack>
+        <Typography sx={{ textAlign: 'center', color: 'text.secondary', mb: 3, fontFamily: FONT_DISPLAY, fontStyle: 'italic', fontSize: '1.1rem' }}>
+          Find the secret leaf of a tree. Every guess shows where it branches off
+          from the answer — the nearer the branch, the warmer the colour.
+        </Typography>
+
+        <DatasetPicker selected={dataset} onPick={(id) => id !== dataset && onSwitch(id, { landing: true, seed: null })} />
+
+        <Typography sx={{ textAlign: 'center', mt: 3, mb: 1.5, fontFamily: FONT_DISPLAY, fontSize: '1.15rem' }}>
+          {manifest.prompt}
+        </Typography>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: 'center' }}>
+          {resumable && (
+            <Button variant="contained" size="large" onClick={resume}>
+              Resume {roundMode === 'daily' ? 'today’s round' : 'your round'}
+            </Button>
+          )}
+          <Button variant={resumable ? 'outlined' : 'contained'} size="large" onClick={() => startGame('daily')}>
+            Today’s {leaf}
+          </Button>
+          <Button variant="outlined" size="large" onClick={() => startGame('practice')}>
+            Practice
+          </Button>
+          <Button variant="outlined" size="large" onClick={() => setMode('explore')}>
+            Explore
+          </Button>
+        </Stack>
+        <Typography variant="body2" sx={{ mt: 1.5, textAlign: 'center', color: 'text.secondary' }}>
+          Explore has no secret and nothing to guess — open the tree wherever you
+          like and read your way around it.
+        </Typography>
+
+        {/* Set apart: a different job from starting a round. */}
+        <Box sx={{ mt: 4, pt: 3, borderTop: 1, borderColor: 'divider' }}>
+          <Typography variant="body2" sx={{ mb: 1.5, textAlign: 'center', color: 'text.secondary' }}>
+            Got a seed from someone? Play their exact round.
+          </Typography>
+          <Stack direction="row" spacing={1} sx={{ justifyContent: 'center', alignItems: 'flex-start' }}>
+            <TextField
+              size="small"
+              placeholder="ABCD-234567"
+              value={seedInput}
+              onChange={(e) => { setSeedInput(e.target.value); setSeedError(null); setSeedElsewhere(null) }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && seedInput.trim()) void startGame('practice', seedInput.trim()) }}
+              error={Boolean(seedError)}
+              slotProps={{ htmlInput: { 'aria-label': 'Seed', spellCheck: false, style: { fontFamily: 'ui-monospace, monospace', letterSpacing: '0.06em' } } }}
+              sx={{ width: 210 }}
+            />
+            <Button variant="outlined" disabled={!seedInput.trim()} onClick={() => startGame('practice', seedInput.trim())} sx={{ height: 40 }}>
+              Play seed
+            </Button>
+          </Stack>
+          {seedError && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {seedError}
+              {seedElsewhere && <>
+                {' '}
+                <Link component="button" onClick={() => onSwitch(seedElsewhere.id, { landing: false, seed: seedElsewhere.seed })}>
+                  Play it there
+                </Link>
+              </>}
+            </Alert>
+          )}
+        </Box>
+
+        <Sources manifest={manifest} />
+      </Box>
+    </Box>
+  )
+
+  if (mode === 'explore') return (
+    <Box sx={{ p: PAGE_PAD, height: '100dvh', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', '& > *': { flexShrink: 0 } }}>
+      {header('Explore')}
+      <ExploreTree />
+    </Box>
+  )
+
+  // Won or gave up: either way the round is finished and nothing more can be guessed.
+  const over = won || revealed
+  const closest = closestGuess(treeData)
+  const score = guesses.length + hintPoints
+  const nextHintCost = hintCost(score)
+  const newRound = mode === 'practice' && (
+    <Button variant="outlined" onClick={() => startGame('practice')}>New {leaf}</Button>
+  )
+
+  return (
+    // A column exactly the screen's height, so the tree takes whatever the
+    // controls leave. Nothing else shrinks: on a screen too short for
+    // everything the page scrolls instead of squashing the guess list.
+    <Box sx={{ p: PAGE_PAD, height: '100dvh', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', '& > *': { flexShrink: 0 } }}>
+      {header(mode === 'daily' ? 'Daily' : 'Practice', mode === 'practice' && (
+        <Button size="small" sx={{ whiteSpace: 'nowrap' }} onClick={() => startGame('practice')}>New {leaf}</Button>
+      ))}
+
+      {(seed || !over) && (
+        <Stack direction="row" spacing={1} sx={{ mb: { xs: 1, sm: 2 }, alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}>
+          {seed && <>
+            <Typography variant="caption" sx={{ color: 'text.secondary', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Seed</Typography>
+            <Chip label={seed} size="small" variant="outlined" sx={{ fontFamily: 'ui-monospace, monospace', fontWeight: 600, letterSpacing: '0.06em' }} />
+            <Tooltip title={copied ? 'Copied' : 'Copy a link to this round'} open={copied || undefined}>
+              <Button size="small" onClick={shareRound}>{copied ? 'Copied' : canShareSheet ? 'Share' : 'Copy link'}</Button>
+            </Tooltip>
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: { xs: 'none', sm: 'inline' }, fontFamily: FONT_DISPLAY, fontStyle: 'italic', fontSize: '0.85rem' }}>
+              share this to let someone play the same round
+            </Typography>
+          </>}
+          {/* The far end of the seed row rather than a line of its own: a whole
+            * row of a phone's screen for controls pressed once a round. */}
+          <Box sx={{ flex: 1, minWidth: 0 }} />
+          {!over && (
+            <Button size="small" variant="text" sx={{ whiteSpace: 'nowrap' }} disabled={!hintAvailable(treeData)} onClick={() => setConfirmHint(true)}>
+              Hint +{nextHintCost}
+            </Button>
+          )}
+          {!over && <Button size="small" variant="text" onClick={() => setConfirmGiveUp(true)}>Give up</Button>}
+        </Stack>
+      )}
+
+      {!over && (
+        <GuessInput
+          onGuess={(label) => guessAll([label])}
+          onBulkGuess={guessAll}
+          bulk={bulkScope(treeData, bulkUnlock(manifest))}
+          disabled={over}
+          exclude={guesses}
+          noun={leaf}
+        />
+      )}
+      {won && (
+        <Stack direction="row" spacing={2} sx={{ mt: 1, alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
+          <Typography variant="h5" sx={{ color: 'success.dark' }}>
+            You got it in {score} {hintPoints > 0
+              ? `(${guesses.length} ${guesses.length === 1 ? 'guess' : 'guesses'} + ${hintPoints} for ${hints === 1 ? 'a hint' : `${hints} hints`})`
+              : guesses.length === 1 ? 'guess' : 'guesses'} — the answer was{' '}
+            <Box component="em" sx={{ fontStyle: 'italic' }}>{displayName(secret ?? '')}</Box>
+          </Typography>
+          {newRound}
+        </Stack>
+      )}
+      {revealed && !won && (
+        <Stack direction="row" spacing={2} sx={{ mt: 1, alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
+          {/* Stated, not celebrated: success green would congratulate the one
+            * outcome that is not a success. */}
+          <Typography variant="h5" sx={{ color: 'text.secondary' }}>
+            The answer was{' '}
+            <Box component="em" sx={{ fontStyle: 'italic', color: 'text.primary' }}>{displayName(secret ?? '')}</Box>
+          </Typography>
+          {newRound}
+        </Stack>
+      )}
+      {revealed && !won && closest && (
+        <Typography variant="body1" sx={{ mt: 0.5, color: 'text.secondary' }}>{describeClosest(closest)}</Typography>
+      )}
+
+      <GuessList guesses={guesses} secret={secret} />
+
+      <Box sx={{ mt: { xs: 1, sm: 2 }, ...TREE_BLEED, flex: '1 0 0', minHeight: { xs: 300, sm: 400 } }}>
+        <GameTree
+          treeData={treeData}
+          focusLabel={hintFocus ? '???' : guesses[guesses.length - 1] ?? null}
+          newestLabel={guesses[guesses.length - 1] ?? null}
+        />
+      </Box>
+
+      {/* A shared link arriving mid-round: asked, because opening a link is not
+        * a decision to throw away a daily in progress. */}
+      <Dialog open={pendingLink !== null} onClose={() => setPendingLink(null)}>
+        <DialogTitle>Play the shared round?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>You have a round in progress. Starting the one from the link ends it.</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPendingLink(null)}>Keep my round</Button>
+          <Button onClick={() => { const s = pendingLink!; setPendingLink(null); void startGame('practice', s) }} autoFocus>
+            Play the link
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {/* Confirmed: on a daily there is no second go, and the button sits a few
+        * pixels from the one pressed all round. */}
+      <Dialog open={confirmGiveUp} onClose={() => setConfirmGiveUp(false)}>
+        <DialogTitle>Give up and see the answer?</DialogTitle>
+        <DialogActions>
+          <Button onClick={() => setConfirmGiveUp(false)}>Keep playing</Button>
+          <Button onClick={() => { setRevealed(true); setConfirmGiveUp(false) }} autoFocus>Show me</Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={confirmHint} onClose={() => setConfirmHint(false)}>
+        <DialogTitle>Take a hint?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            It reveals the next group the answer belongs to, and adds {nextHintCost} to
+            your score: {score} → {score + nextHintCost}.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmHint(false)}>Keep playing</Button>
+          <Button onClick={takeHint} autoFocus>Reveal (+{nextHintCost})</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  )
+}
+
+/** Where a tree came from, under its licence. Shown on the front page because
+ *  the licences ask for attribution where the data is used, and this is where
+ *  every round starts. */
+function Sources({ manifest }: { manifest: Manifest }) {
+  if (!manifest.sources?.length) return null
+  return (
+    <Box sx={{ mt: 4, color: 'text.secondary' }}>
+      {manifest.sources.map((s) => (
+        <Typography key={s.name} variant="caption" sx={{ display: 'block', textAlign: 'center', lineHeight: 1.5, mb: 0.5 }}>
+          <Link href={s.url} target="_blank" rel="noopener">{s.name}</Link>
+          {s.licence && <>{' · '}{s.licence_url ? <Link href={s.licence_url} target="_blank" rel="noopener">{s.licence}</Link> : s.licence}</>}
+          {s.note && <>{' — '}{s.note}</>}
+        </Typography>
+      ))}
+    </Box>
+  )
+}

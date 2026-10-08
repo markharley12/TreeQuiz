@@ -40,7 +40,7 @@ def convert_info(info: dict) -> dict:
             entry["image_url"] = e["image_url"]
         if e.get("wikipedia_url"):
             entry["url"] = e["wikipedia_url"]
-            entry["url_title"] = e.get("wikipedia_title") or name
+            entry["url_title"] = f"{e.get('wikipedia_title') or name} on Wikipedia"
         out[name] = entry
     return out
 

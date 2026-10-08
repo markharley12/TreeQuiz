@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- pwa/icon.svg with rounded corners, for the browser tab. -->
+  <rect width="512" height="512" rx="96" fill="#f4f0e8"/>
+  <g transform="translate(-28 8)" stroke="#2c2620" stroke-width="22" stroke-linecap="round" fill="none">
+    <path d="M256 140V196M152 196H360M152 196V352M360 196V262M304 262H416M304 262V352M416 262V352"/>
+    <circle cx="256" cy="140" r="18" fill="#2c2620" stroke="none"/>
+    <circle cx="152" cy="352" r="26" fill="#2c2620" stroke="none"/>
+    <circle cx="304" cy="352" r="36" fill="#3d7a45" stroke="none"/>
+    <circle cx="416" cy="352" r="22" fill="#f4f0e8" stroke="#3f5573" stroke-width="12"/>
+  </g>
+</svg>

@@ -118,6 +118,17 @@ QUALIFY = {
     "20Axx", "26Axx", "26Bxx", "40Exx", "49Qxx", "60Axx", "60Exx", "70Axx",
 }
 
+# The CSV is Latin-1, and every character outside it was exported as "?" —
+# "Randi? index", "Erd?s problems". These are the ten words that happened to,
+# each checked against MSC_2020.tex, which spells them in TeX accents
+# (Randi\'c, Erd\H{o}s). `read_msc` fails if any "?" is left inside a word, so
+# a new release that loses another name stops the build instead of shipping it.
+REPAIRS = {
+    "Randi?": "Randić", "Bely?": "Belyĭ", "Szeg?": "Szegő", "Mikusi?ski": "Mikusiński",
+    "Kre?n": "Kreĭn", "Nemytski?": "Nemytskiĭ", "Erd?s": "Erdős", "?ech": "Čech",
+    "?ukasiewicz": "Łukasiewicz", "Nikol'ski?": "Nikol'skiĭ",
+}
+
 BLACKBOARD = dict(zip("ABCDEFGHNPQRZ", "𝔸𝔹ℂ𝔻𝔼𝔽𝔾ℍℕℙℚℝℤ"))
 SYMBOLS = {
     "infty": "∞", "partial": "∂", "ge": "≥", "geq": "≥", "le": "≤", "leq": "≤",
@@ -154,10 +165,21 @@ def detex(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
+def repair(s: str) -> str:
+    for lost, word in REPAIRS.items():
+        s = s.replace(lost, word)
+    return s
+
+
 def read_msc(path) -> dict[str, dict]:
     with open(path, encoding="latin-1", newline="") as f:
         rows = list(csv.DictReader(f, delimiter="\t"))
-    return {r["code"].strip(): {"text": detex(r["text"]), "description": detex(r["description"])} for r in rows}
+    out = {r["code"].strip(): {"text": detex(repair(r["text"])), "description": detex(repair(r["description"]))}
+           for r in rows}
+    lost = sorted({m for e in out.values() for v in e.values() for m in re.findall(r"\S*\w\?\w\S*|\S*\?\w\S*|\S*\w\?(?=[ ,;)])", v)})
+    if lost:
+        raise SystemExit(f"characters lost in the CSV's encoding, not in REPAIRS: {lost}")
+    return out
 
 
 def notes_of(entry: dict) -> str:
@@ -233,7 +255,9 @@ def build(msc: dict[str, dict]) -> tuple[dict, dict]:
         label = label.lstrip("~")
         return node(label, None if unranked else "Area", children=[member(x) for x in members])
 
-    tree = node("Mathematics", "Mathematics", children=[
+    # The root has no rank: it is pinned at 0 whatever it says, and "Mathematics ·
+    # 517 fields" under a box labelled Mathematics read as a stutter.
+    tree = node("Mathematics", children=[
         node(label, "Branch", children=[member(m) for m in members]) for label, members in BRANCHES
     ])
     return tree, info

@@ -1,0 +1,130 @@
+// Front-end-only preferences, kept in localStorage.
+//
+// Per device: a preference does not follow you between browsers, which is the
+// trade for needing no account.
+//
+// A module-level store rather than context, because the settings menu and both
+// trees are in unrelated parts of the component tree and a change has to reach
+// all of them at once.
+import { useSyncExternalStore } from 'react'
+import { COLOR_SCHEMES, DEFAULT_COLOR_SCHEME, type ColorScheme } from './colors'
+import { isNarrowNow } from './media'
+import { DATASETS, DEFAULT_DATASET, storageKey } from './engine/datasets'
+
+const STORAGE_KEY = storageKey('settings')
+
+// Which way the tree grows. Named for what the reader sees rather than for
+// react-d3-tree's own words: its "horizontal" grows left-to-right, which reads
+// as "across", and it is easy to pick the wrong one from the library's name.
+export const ORIENTATIONS = {
+  horizontal: { label: 'Across', hint: 'root on the left' },
+  vertical: { label: 'Down', hint: 'root at the top' },
+} as const
+
+export type Orientation = keyof typeof ORIENTATIONS
+
+export interface Settings {
+  colorScheme: ColorScheme
+  orientation: Orientation
+  /** Which dataset to play and explore: the id of a directory under
+   *  `datasets/`. Validated against the build's own list on read, so a dataset
+   *  that has since been removed falls back to the default rather than
+   *  failing every request. */
+  dataset: string
+}
+
+// "Down" is the right default on a desktop and the wrong one on a phone, and
+// the difference is which axis the siblings run along. Down puts them side by
+// side, so a 390px screen shows two of them and the rest are off the edge —
+// while the generations, which you can only ever walk one at a time, get all
+// the room. Across stacks siblings vertically: a phone then shows a dozen of
+// the choices you are actually choosing between, and scrolls down through them
+// the way it scrolls everything else.
+//
+// Only the default moves. The setting is still one control in the settings
+// menu, and a saved choice always wins — including a phone user who prefers
+// Down, since `read()` only falls back to this when nothing is stored.
+const DEFAULTS: Settings = {
+  colorScheme: DEFAULT_COLOR_SCHEME,
+  orientation: isNarrowNow() ? 'horizontal' : 'vertical',
+  dataset: DEFAULT_DATASET,
+}
+
+function read(): Settings {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return DEFAULTS
+    const saved = JSON.parse(raw) as Partial<Settings>
+    // Validated rather than trusted. A scheme name we no longer ship — an older
+    // build, or someone editing localStorage — would otherwise reach the scale
+    // as `undefined` and paint every node `hsl(NaN, …)`, i.e. nothing at all.
+    return {
+      colorScheme:
+        saved.colorScheme && saved.colorScheme in COLOR_SCHEMES
+          ? saved.colorScheme
+          : DEFAULTS.colorScheme,
+      orientation:
+        saved.orientation && saved.orientation in ORIENTATIONS
+          ? saved.orientation
+          : DEFAULTS.orientation,
+      dataset:
+        typeof saved.dataset === 'string' && DATASETS.some((d) => d.id === saved.dataset)
+          ? saved.dataset
+          : DEFAULTS.dataset,
+    }
+  } catch {
+    return DEFAULTS
+  }
+}
+
+let current: Settings = read()
+const listeners = new Set<() => void>()
+
+function emit() {
+  for (const listener of listeners) listener()
+}
+
+export function setSetting<K extends keyof Settings>(key: K, value: Settings[K]) {
+  if (current[key] === value) return
+  current = { ...current, [key]: value }
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(current))
+  } catch {
+    // Private browsing, or storage full. The choice still applies for this
+    // session; it just will not be here next time.
+  }
+  emit()
+}
+
+// Another tab changing the setting. Re-read rather than trusting the event's
+// payload, so the validation above applies to it too.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key !== STORAGE_KEY) return
+    current = read()
+    emit()
+  })
+}
+
+/** Subscribe to any settings change. Returns the unsubscribe. */
+export function subscribeSettings(listener: () => void) {
+  listeners.add(listener)
+  return () => { listeners.delete(listener) }
+}
+
+// `current` is replaced, never mutated, so this is a stable snapshot.
+const snapshot = () => current
+
+/** The settings, outside React. `useSettings` is the hook over the same store.
+ *
+ * The store's surface is get/subscribe/set; only `set` and the hook were
+ * exported because React was the only reader. Reading it from plain code — a
+ * module-level default, a test — needs no ceremony.
+ */
+export function getSettings(): Settings {
+  return current
+}
+
+export function useSettings(): Settings {
+  return useSyncExternalStore(subscribeSettings, snapshot, snapshot)
+}

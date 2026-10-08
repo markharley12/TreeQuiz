@@ -22,3 +22,7 @@ treequiz = "treequiz.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/treequiz"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["tests", "datagen"]
