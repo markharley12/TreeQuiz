@@ -69,7 +69,7 @@ def collapse_lone_children(tree: dict, keep: set[str] = frozenset()) -> dict:
     information; TaxoQuiz's clade layer left out Parahoxozoa for this reason."""
     def fix(n: dict, is_root: bool) -> dict:
         kids = n.get("children") or []
-        while len(kids) == 1 and not is_root and n["name"] not in keep and kids[0].get("children"):
+        while len(kids) == 1 and not is_root and n["name"] not in keep:
             n = kids[0]
             kids = n.get("children") or []
         if kids:

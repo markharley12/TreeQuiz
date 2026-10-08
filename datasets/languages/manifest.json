@@ -1,0 +1,96 @@
+{
+  "order": 2,
+  "title": "Languages of the world",
+  "short_title": "Languages",
+  "prompt": "Guess the secret language by where it sits in the family tree of languages.",
+  "blurb": "About 400 well-known languages, from English to Yoruba, on Glottolog's family tree.",
+  "noun": "language",
+  "noun_plural": "languages",
+  "bulk_unlock": 0.5,
+  "info_source": "Wikipedia",
+  "sources": [
+    {
+      "name": "Glottolog 5.3",
+      "url": "https://glottolog.org",
+      "licence": "CC BY 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+      "note": "Hammarström, Forkel, Haspelmath & Bank (2026), Max Planck Institute for Evolutionary Anthropology, doi:10.5281/zenodo.15525265. Languages chosen by how many Wikipedias cover them (Wikidata, CC0)."
+    },
+    {
+      "name": "Wikipedia",
+      "url": "https://en.wikipedia.org",
+      "licence": "CC BY-SA 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "note": "Popup text; images are linked from Wikimedia Commons and carry their own licences"
+    }
+  ],
+  "checks": {
+    "closer": [
+      {
+        "to": "stan1293",
+        "order": [
+          "scot1243",
+          "west2354",
+          "stan1295",
+          "swed1254",
+          "stan1290",
+          "finn1318"
+        ]
+      },
+      {
+        "to": "stan1288",
+        "order": [
+          "port1283",
+          "stan1289",
+          "stan1290",
+          "ital1282",
+          "roma1327",
+          "lati1261",
+          "stan1293",
+          "stan1318"
+        ]
+      },
+      {
+        "to": "finn1318",
+        "order": [
+          "esto1258",
+          "hung1274",
+          "nucl1301"
+        ]
+      },
+      {
+        "to": "mand1415",
+        "order": [
+          "yuec1235",
+          "tibe1272",
+          "nucl1643"
+        ]
+      },
+      {
+        "to": "hind1269",
+        "order": [
+          "west2369",
+          "stan1293",
+          "tami1289"
+        ]
+      },
+      {
+        "to": "stan1318",
+        "order": [
+          "hebr1245",
+          "amha1245",
+          "haus1257",
+          "swah1253"
+        ]
+      },
+      {
+        "to": "zulu1248",
+        "order": [
+          "swah1253",
+          "yoru1245",
+          "stan1318"
+        ]
+      }
+    ]
+  }
+}
