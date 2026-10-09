@@ -356,3 +356,112 @@ def test_an_articles_move_list_is_folded_back_into_its_sentence():
     assert bc.tidy_intro(lead) == (
         "The Najdorf Variation (NY-dorf) is a variation that begins with the moves "
         "1. e4 c5 2. Nf3 d6 5. O-O a6. Black's 5...a6 aims to deny b5.\nIt is popular.")
+
+
+# --- physics -----------------------------------------------------------------
+
+import build_physics as bph  # noqa: E402
+from wikipedia import named_for  # noqa: E402
+
+
+@pytest.mark.parametrize("label,title,same", [
+    ("Black holes", "Black hole", True),
+    ("Bose-Einstein condensates", "Bose–Einstein condensate", True),
+    ("W & Z bosons", "W and Z bosons", True),
+    ("Mergers", "Mergers and acquisitions", False),
+    ("Quantum dots", "Quantum", False),
+])
+def test_a_title_names_a_label_give_or_take_a_plural_and_a_dash(label, title, same):
+    assert named_for(label, title) is same
+
+
+def test_a_redirect_is_believed_unless_it_broadens_lands_in_a_section_or_is_shared():
+    pages = {
+        "Gravitation": {"title": "Gravity", "qid": "Q1", "redirect": True, "fragment": None},
+        "Vacuum technology": {"title": "Vacuum", "qid": "Q2", "redirect": True, "fragment": None},
+        "Classical optics": {"title": "Optics", "qid": "Q3", "redirect": True, "fragment": "Classical optics"},
+        "Atomic spectra": {"title": "Spectroscopy", "qid": "Q4", "redirect": True, "fragment": None},
+        "Molecular spectra": {"title": "Spectroscopy", "qid": "Q4", "redirect": True, "fragment": None},
+        "Superconductors": {"title": "Superconductivity", "qid": "Q5", "redirect": True, "fragment": None},
+        "Superconductivity": {"title": "Superconductivity", "qid": "Q5", "redirect": False, "fragment": None},
+    }
+    got = bph.accept_pages(list(pages), pages, {})
+    assert {k: v["title"] for k, v in got.items()} == {"Gravitation": "Gravity", "Superconductivity": "Superconductivity"}
+
+
+def concept(label, broader=(), facet=None, disciplines=()):
+    return {"label": label, "aliases": [], "broader": list(broader), "facet": facet, "disciplines": list(disciplines)}
+
+
+def test_a_concept_takes_its_deepest_parent_then_its_main_home_and_a_top_its_smallest_discipline():
+    disciplines = {"d:amo": {"label": "Atomic, Molecular & Optical"}, "d:acc": {"label": "Accelerators & Beams"},
+                   "d:x": {"label": "Plasma Physics"}}
+    concepts = {
+        "optics": concept("Optics & lasers", facet="Research Areas", disciplines=["d:amo"]),
+        "beams": concept("Accelerator subsystems", facet="Research Areas", disciplines=["d:acc"]),
+        "other": concept("Other optics", ["optics"]),
+        "more": concept("More optics", ["optics"]),
+        "lasers": concept("Lasers", ["optics", "beams"]),
+        "mhd": concept("Magnetohydrodynamics", facet="Research Areas", disciplines=["d:amo", "d:x"]),
+        "ai": concept("Artificial intelligence", ["optics"], facet="Computational Techniques", disciplines=["d:amo"]),
+        "deep": concept("Deep learning", ["ai"]),
+    }
+    parent = bph.choose_parents(concepts, disciplines)
+    assert parent["lasers"] == "optics"           # a tie on depth goes to more beneath
+    assert parent["mhd"] == "d:x"                 # the discipline with fewer tops
+    assert "ai" not in parent and "deep" not in parent   # a technique stays out
+
+
+# --- chemistry -----------------------------------------------------------------
+
+import build_chemistry as bch  # noqa: E402
+
+
+def chebi():
+    names = {"C:root": "chemical entity", "C:atom": "atom", "C:metal": "metal atom", "C:fe": "iron atom",
+             "C:fe0": "iron(0)", "C:mol": "molecular entity", "C:gas": "gas molecular entity",
+             "C:org": "organic molecular entity", "C:alk": "alkaloid", "C:xan": "methylxanthine",
+             "C:caf": "caffeine", "C:theo": "theobromine", "C:allergen": "penicillin allergen", "C:pen": "penicillin",
+             "C:benz": "benzylpenicillin", "C:wrong": "CU-O LINKAGE", "C:cuo": "copper(II) oxide"}
+    parents = {"C:root": [], "C:atom": ["C:root"], "C:metal": ["C:atom"], "C:fe": ["C:metal"],
+               "C:fe0": ["C:mol"], "C:mol": ["C:root"], "C:gas": ["C:mol"], "C:org": ["C:mol"],
+               "C:alk": ["C:org"], "C:xan": ["C:alk"], "C:caf": ["C:xan", "C:gas"], "C:theo": ["C:xan"],
+               "C:pen": ["C:org"], "C:allergen": ["C:pen"], "C:benz": ["C:allergen", "C:pen"],
+               "C:wrong": ["C:org"], "C:cuo": ["C:mol"]}
+    return names, parents
+
+
+def test_an_element_is_its_atom_and_a_wrong_chebi_id_is_corrected(monkeypatch):
+    names, parents = chebi()
+    monkeypatch.setattr(bch, "ROOT", "C:root")
+    monkeypatch.setattr(bch, "ATOM", "C:atom")
+    monkeypatch.setattr(bch, "CHEBI_FIXES", {"Qcuo": "C:cuo"})
+    items = {
+        "Qfe": {"sitelinks": 200, "chebi": ["C:fe", "C:fe0"], "element": True, "inchikey": True, "title": "Iron"},
+        "Qcuo": {"sitelinks": 50, "chebi": ["C:wrong"], "inchikey": True, "title": "Copper(II) oxide"},
+        "Qalk": {"sitelinks": 90, "chebi": ["C:alk"], "inchikey": False, "title": "Alkaloid"},
+    }
+    chosen = bch.choose(items, names, parents, bch.depths(parents))
+    assert set(chosen) == {"C:fe", "C:cuo"}       # the class has no structure, so no InChIKey
+
+
+def test_a_chemical_hangs_from_its_structural_class_not_its_state_or_its_use(monkeypatch):
+    names, parents = chebi()
+    monkeypatch.setattr(bch, "ROOT", "C:root")
+    depth = bch.depths(parents)
+    chosen = {t: {"title": names[t].capitalize(), "qid": t} for t in ("C:caf", "C:theo", "C:benz", "C:fe")}
+    tree, _ = bch.build(chosen, names, parents, depth)
+
+    def path(n, name, above=()):
+        if n["name"] == name:
+            return list(above)
+        for c in n.get("children") or []:
+            found = path(c, name, (*above, n["name"]))
+            if found is not None:
+                return found
+        return None
+
+    assert "methylxanthine" in path(tree, "caffeine") and "gas molecular entity" not in path(tree, "caffeine")
+    assert "penicillin allergen" not in path(tree, "benzylpenicillin")
+    assert bch.label_of("Mercury (element)") == "Mercury"
+    assert bch.label_of("Poly(methyl methacrylate)") == "Poly(methyl methacrylate)"

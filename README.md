@@ -20,6 +20,7 @@ about it.
 | **Instruments** | 428 instruments | 9 | The [Hornbostel–Sachs](https://en.wikipedia.org/wiki/Hornbostel%E2%80%93Sachs) classification, by what vibrates; instruments and their numbers from [Wikidata](https://www.wikidata.org/wiki/Property:P1762) | none |
 | **Animals** | 530 species | 21 | TaxoQuiz's hand-curated taxonomy | the Linnaean ladder |
 | **Physics** | 487 topics | 7 | [PhySH](https://physh.org), the American Physical Society's Physics Subject Headings: research areas and physical systems under their disciplines | none |
+| **Chemistry** | 465 chemicals | 14 | [ChEBI](https://www.ebi.ac.uk/chebi/)'s classes of chemical structure; elements and compounds chosen on Wikidata by how many Wikipedias cover them | none |
 | **Chess** | 446 openings | 11 | [Lichess's opening list](https://github.com/lichess-org/chess-openings), on the tree of the openings' own moves | none |
 
 Each tree was picked to test something different. Maths is shallow with clean
@@ -234,10 +235,14 @@ popup.
   Society, in the public domain (CC0). Where PhySH gives a topic several
   parents TreeQuiz chose one, and topics are chosen by how many Wikipedias
   cover them.
+- **Chemistry**: ChEBI, Chemical Entities of Biological Interest (release
+  255, EMBL-EBI), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/):
+  the classes and the chemicals' names. Which chemicals, and their ChEBI IDs,
+  from [Wikidata](https://www.wikidata.org) (CC0), one corrected by hand.
 - **Chess**: the openings, their ECO codes and moves are
   [Lichess's](https://github.com/lichess-org/chess-openings) collection, in
   the public domain (CC0). The boards are drawn by the builder.
-- **Popup text** for languages, instruments, animals, physics and chess is from English Wikipedia,
+- **Popup text** for languages, instruments, animals, physics, chemistry and chess is from English Wikipedia,
   [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/); every entry
   links its article. Images are linked from Wikimedia Commons and carry their
   own licences.

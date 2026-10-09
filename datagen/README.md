@@ -13,6 +13,7 @@ the source again.
 | `build_instruments.py` | `datasets/instruments` | Wikidata's Hornbostel–Sachs numbers (P1762), class names from Wikipedia's Hornbostel–Sachs articles |
 | `build_animals.py` | `datasets/animals` | TaxoQuiz's committed example (`--taxoquiz ../TaxoQuiz`) |
 | `build_physics.py` | `datasets/physics` | PhySH (CC0), pinned to a commit; fame from Wikipedia titles and Wikidata sitelinks |
+| `build_chemistry.py` | `datasets/chemistry` | ChEBI's ontology (CC BY 4.0), release pinned; chemicals from Wikidata's ChEBI IDs and sitelinks |
 | `build_chess.py` | `datasets/chess` | Lichess's opening list (CC0), pinned to a commit; Wikipedia's leads where an opening has an article |
 
 `san.py` replays chess moves for `build_chess.py`, which draws each position
@@ -85,6 +86,11 @@ world.
   subsystems). And a technique that a research area also lists beneath
   itself is still a technique: Artificial intelligence, filed under Quantum
   computation, brought deep learning into a physics tree until it was barred.
+- **A class is not a compound.** "Alkaloid" and "vitamin" have ChEBI IDs and
+  more Wikipedias than most compounds. `build_chemistry.py` takes only items
+  with an InChIKey, which a class cannot have, or an element — and maps an
+  element to its *atom*, since Wikidata also gives iron "iron(0)", which put
+  iron among its oxides.
 - **Pseudo-groups.** A filing category is not a lineage. Glottolog's "Sign
   Language" and "Artificial Language" would score as kinship, so they are left
   out.

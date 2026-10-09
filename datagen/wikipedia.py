@@ -13,6 +13,7 @@ retry, and worse, resolves to the wrong article without saying so.
 from __future__ import annotations
 
 import json
+import re
 import time
 import urllib.error
 import urllib.parse
@@ -125,3 +126,29 @@ def info_entry(summary: dict | None) -> dict | None:
         entry["url"] = summary["url"]
         entry["url_title"] = f"{summary['title']} on Wikipedia"
     return entry
+
+
+# --- telling whether a title names a thing ----------------------------------
+
+def _fold(s: str) -> list[str]:
+    s = re.sub(r"[‐-―-]", " ", s.lower())
+    return re.sub(r"[^a-z0-9 ]", "", s.replace("&", "and")).split()
+
+
+def _forms(word: str) -> set[str]:
+    out = {word}
+    if word.endswith("ies"):
+        out.add(word[:-3] + "y")
+    if word.endswith("es"):
+        out.add(word[:-2])
+    if word.endswith("s"):
+        out.add(word[:-1])
+    return out
+
+
+def named_for(label: str, title: str) -> bool:
+    """Whether a Wikipedia title names what a label names: the same
+    words, give or take a plural, case and dashes. "Black holes" / *Black
+    hole* yes; "Mergers" / *Mergers and acquisitions* no."""
+    a, b = _fold(label), _fold(title)
+    return len(a) == len(b) and all(_forms(x) & _forms(y) for x, y in zip(a, b))

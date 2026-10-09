@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent, type RefOb
 import { Box, Typography } from '@mui/material'
 import { cachedInfo, loadInfo, useInfoCache } from '../infoCache'
 import { displayName } from '../names'
+import { IMAGE_MAT } from '../theme'
 
 // Hovering asks for a node's info, and the picture then stays on its box.
 //
@@ -77,7 +78,7 @@ export function useHoverPreview(container: RefObject<HTMLElement | null>, datase
  *
  * Renders nothing until the lookup lands, and nothing ever for a node with no
  * picture — a card that pops up empty is worse than no card. The image is the
- * point, so it is shown whole rather than cropped, on the same black mat the
+ * point, so it is shown whole rather than cropped, on the same white mat the
  * popup uses.
  */
 export function HoverPreview({ preview, dataset }: { preview: Preview | null; dataset: string }) {
@@ -93,7 +94,7 @@ export function HoverPreview({ preview, dataset }: { preview: Preview | null; da
         bgcolor: 'background.paper', boxShadow: 6,
       }}
     >
-      <Box sx={{ aspectRatio: '4 / 3', bgcolor: 'common.black' }}>
+      <Box sx={{ aspectRatio: '4 / 3', bgcolor: IMAGE_MAT }}>
         <Box
           component="img"
           src={info.image_url}

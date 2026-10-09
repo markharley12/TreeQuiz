@@ -53,7 +53,7 @@ import urllib.parse
 from collections import defaultdict
 
 from common import CACHE, collapse_lone_children, fetch, node, write_dataset
-from wikipedia import _get, info_entry, summaries
+from wikipedia import _fold, _forms, _get, info_entry, named_for, summaries
 
 REF = "04b9cec3e633aa1abf68f2a09868fdc56be12e60"   # physh-org/PhySH, 2026-03-24
 SOURCE = f"https://raw.githubusercontent.com/physh-org/PhySH/{REF}/physh.json.gz"
@@ -227,30 +227,6 @@ def choose_parents(concepts: dict[str, dict], disciplines: dict[str, dict]) -> d
 
 
 # --- fame -------------------------------------------------------------------
-
-def _fold(s: str) -> list[str]:
-    s = re.sub(r"[‐-―-]", " ", s.lower())
-    return re.sub(r"[^a-z0-9 ]", "", s.replace("&", "and")).split()
-
-
-def _forms(word: str) -> set[str]:
-    out = {word}
-    if word.endswith("ies"):
-        out.add(word[:-3] + "y")
-    if word.endswith("es"):
-        out.add(word[:-2])
-    if word.endswith("s"):
-        out.add(word[:-1])
-    return out
-
-
-def named_for(label: str, title: str) -> bool:
-    """Whether a Wikipedia title names what a PhySH label names: the same
-    words, give or take a plural, case and dashes. "Black holes" / *Black
-    hole* yes; "Mergers" / *Mergers and acquisitions* no."""
-    a, b = _fold(label), _fold(title)
-    return len(a) == len(b) and all(_forms(x) & _forms(y) for x, y in zip(a, b))
-
 
 def resolve_titles(labels: list[str], refresh: bool) -> dict[str, dict | None]:
     """Label to {title, qid} of the English Wikipedia page it lands on, or

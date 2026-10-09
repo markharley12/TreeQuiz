@@ -11,10 +11,11 @@ unchanged, and this file covers what is new.
 
 ## Status
 
-Six datasets — **maths** (MSC2020, 517 fields), **languages** (Glottolog, 415),
-**instruments** (Hornbostel–Sachs, 428), **animals** (TaxoQuiz's 530), **chess**
-(Lichess, 446 openings), **physics** (PhySH, 487 topics). Python suite 126
-tests, frontend 394, both green;
+Seven datasets — **maths** (MSC2020, 517 fields), **languages** (Glottolog,
+415), **instruments** (Hornbostel–Sachs, 428), **animals** (TaxoQuiz's 530),
+**chess** (Lichess, 446 openings), **physics** (PhySH, 487 topics),
+**chemistry** (ChEBI, 465 chemicals). Python suite 138 tests, frontend 412,
+both green;
 CI and Pages workflows written but **the repo has not been pushed** and has no
 GitHub remote yet. No Android build (TaxoQuiz's Capacitor setup was left out).
 
@@ -64,7 +65,7 @@ cases. Every case is a whole game state or slice, so each dataset costs about
 150KB: chess took the file past 1MB, and the counts were cut (Oct 2026) to the
 fewest that reach every rule — 9 random rounds plus the specials, the 200-node
 slice only from the top, the suggest exclusion list written once. 769KB with
-five, 918KB with six: trim again if it passes about 1.2MB. The cut was checked by mutation and found an old gap: a child landing
+five, 1,055KB with seven: trim again if it passes about 1.2MB. The cut was checked by mutation and found an old gap: a child landing
 *exactly* on its parent's warmth (`<=` against `<` in the floor) was reached by
 no case; the synthetic `C0`/`P`/`C` tree now reaches it.
 
@@ -115,6 +116,9 @@ no case; the synthetic `C0`/`P`/`C` tree now reaches it.
 - **A popup entry may carry a `subtitle`** — a chess opening's moves — set
   under the title. And the source's licence line now needs text to follow:
   a board drawn by the builder is nobody's CC BY-SA.
+- **Pictures sit on a white mat** (`IMAGE_MAT`), not TaxoQuiz's black:
+  Wikipedia's chemical structures are transparent line drawings, and on black
+  the caffeine popup showed an empty black box.
 - **The picker balances its rows**, at most four across: five trees are three
   and two, not four and a stray.
 
@@ -172,5 +176,15 @@ no case; the synthetic `C0`/`P`/`C` tree now reaches it.
   Left out: Networks, the living systems' biology objects (DNA, sperm), and
   `PRUNE` (paints, cosmetics). A famous concept with one child becomes the
   leaf, or splicing would lose it — black holes did.
+- **Chemistry** (`build_chemistry.py`, whose docstring has every decision):
+  ChEBI's is_a classes, release 255 pinned. Leaves are Wikidata items with a
+  ChEBI ID, ≥45 sitelinks, and an InChIKey (a compound, not a class) or
+  element status; an element maps to its "X atom" term, by name where
+  Wikidata gives none. ChEBI is a lattice, so the deepest parent wins, but
+  never a class by behaviour where a structural one exists (`NOT_STRUCTURE`:
+  "gas molecular entity" pulled the noble gases away from the other atoms).
+  `CHEBI_FIXES` corrects copper(II) oxide, which Wikidata files as "CU-O
+  LINKAGE" — a lead for fixing Wikidata. Lost by the rule: glucose,
+  penicillin, chlorophyll, which Wikidata files as classes.
 - **Rejected**: countries on UN M49 — the UN's terms forbid redistribution and
   derivative works.

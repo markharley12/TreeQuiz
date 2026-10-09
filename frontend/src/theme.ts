@@ -29,6 +29,11 @@ export const PAPER = '#f4f0e8'
 export const CARD = '#fffdf9'
 export const LINE = '#ded5c6'
 export const ACCENT = '#3f5573'
+/** Behind a picture shown whole. White, not the black it was in TaxoQuiz:
+ *  chemical structures and chess boards come with transparent or light
+ *  edges, and a structure diagram on black was simply not there. A photo
+ *  reads as well on white. */
+export const IMAGE_MAT = '#ffffff'
 
 // Tree connectors. Hairline and warm-grey rather than the library's near-black:
 // on a wide fan-out the links are most of the ink on screen, and at full black

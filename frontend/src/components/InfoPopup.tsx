@@ -9,6 +9,7 @@ import { loadInfo } from '../infoCache'
 import { entryFor } from '../engine/datasets'
 import { displayName } from '../names'
 import { infoSource } from '../words'
+import { IMAGE_MAT } from '../theme'
 
 interface Props {
   names: string[]   // one or more node names (a compressed chain has several)
@@ -158,7 +159,7 @@ export default function InfoPopup({ names, onClose }: Props) {
                       {info?.image_url && (
                         /* Letterboxed rather than cropped, on a fixed aspect so
                            the popup does not jump when the image loads. */
-                        <Box sx={{ aspectRatio: '16 / 9', bgcolor: 'common.black', borderRadius: 1, overflow: 'hidden', mb: 1.5 }}>
+                        <Box sx={{ aspectRatio: '16 / 9', bgcolor: IMAGE_MAT, border: 1, borderColor: 'divider', borderRadius: 1, overflow: 'hidden', mb: 1.5 }}>
                           <Box
                             component="img"
                             src={info.image_url}

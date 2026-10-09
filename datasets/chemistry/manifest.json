@@ -1,0 +1,42 @@
+{
+  "order": 7,
+  "title": "Chemicals",
+  "short_title": "Chemistry",
+  "prompt": "Guess the secret chemical by the classes it shares with yours.",
+  "blurb": "About 500 elements and compounds, from water to caffeine, on ChEBI's classes of structure.",
+  "noun": "chemical",
+  "noun_plural": "chemicals",
+  "bulk_unlock": 0.5,
+  "info_source": "Wikipedia",
+  "long_labels": true,
+  "sources": [
+    {
+      "name": "ChEBI",
+      "url": "https://www.ebi.ac.uk/chebi/",
+      "licence": "CC BY 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+      "note": "Chemical Entities of Biological Interest, release 255, EMBL-EBI: the classes and the chemicals' names. Where ChEBI gives a chemical several parents, TreeQuiz chose one"
+    },
+    {
+      "name": "Wikidata",
+      "url": "https://www.wikidata.org/wiki/Property:P683",
+      "licence": "CC0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "note": "Which chemicals, by how many Wikipedias cover them, and their ChEBI IDs; one corrected by hand"
+    },
+    {
+      "name": "Wikipedia",
+      "url": "https://en.wikipedia.org",
+      "licence": "CC BY-SA 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "note": "The chemicals' common names and popup text. Images are linked from Wikimedia Commons and carry their own licences"
+    }
+  ],
+  "checks": {
+    "closer": [
+      {"to": "caffeine", "order": ["theobromine", "dopamine", "ethanol", "iron atom"]},
+      {"to": "dopamine", "order": ["(R)-adrenaline", "caffeine", "water"]},
+      {"to": "iron atom", "order": ["cobalt atom", "sodium atom", "helium atom", "water"]}
+    ]
+  }
+}
