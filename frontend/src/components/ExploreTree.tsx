@@ -491,6 +491,7 @@ export default function ExploreTree() {
       const full = await fetchExplore(dataset, tree.name, FETCH_ALL)
       setTree(full)
       setExpanded(allNames(full))
+      jumped.current = null
       setViewKey((k) => k + 1)
       // Logged rather than shown: it is the answer to "how bad is this really?",
       // which is a question you ask once while building and never again.

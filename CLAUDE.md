@@ -91,12 +91,13 @@ no case; the synthetic `C0`/`P`/`C` tree now reaches it.
 - **The popup's licence is `info_source`'s**, not the first source's
   (`words.infoSource`). The first is usually the tree's: languages popups
   credited Wikipedia's CC BY-SA text to Glottolog's CC BY until Oct 2026.
-- **A search jump in explore landed nowhere** — a bug TaxoQuiz probably
-  shares, since the code came across unchanged. The node is not in the DOM on
+- **A search jump in explore landed nowhere.** The node is not in the DOM on
   the commit the tree arrives, so the focus effect now retries per frame. And
   the breadcrumbs the jump adds resize the tree, which re-framed it, so the
   jumped-to node is kept in the middle through a resize (`jumped`) until a
-  pan, tap or re-root.
+  pan, tap, re-root or expand-all. TaxoQuiz had it too, on the first jump of
+  a visit (Homo sapiens at (-353, 1222), off the view); the port is on
+  TaxoQuiz's `explore-jump-fix` branch, not merged.
 - **A link to the round already saved resumes it**, even when explore was the
   tree's last view. Remembering explore per tree is TreeQuiz's, and it used
   to win over the link.
