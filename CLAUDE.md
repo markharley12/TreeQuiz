@@ -11,8 +11,9 @@ unchanged, and this file covers what is new.
 
 ## Status
 
-Three datasets — **maths** (MSC2020, 517 fields), **languages** (Glottolog, 415),
-**animals** (TaxoQuiz's 530). Python suite 85 tests, frontend 336, both green;
+Four datasets — **maths** (MSC2020, 517 fields), **languages** (Glottolog, 415),
+**instruments** (Hornbostel–Sachs, 428), **animals** (TaxoQuiz's 530). Python
+suite 106 tests, frontend 369, both green;
 CI and Pages workflows written but **the repo has not been pushed** and has no
 GitHub remote yet. No Android build (TaxoQuiz's Capacitor setup was left out).
 
@@ -58,7 +59,7 @@ As in TaxoQuiz: Python is the reference, `frontend/src/engine/` the port, and
 `tests/conformance.py` writes `conformance.json` over **every shipped dataset**
 plus synthetic trees. Adding or rebuilding a dataset therefore means
 regenerating it; `conformance.test.ts` also fails if a shipped dataset has no
-cases. The file is ~700KB with three datasets — watch it if many are added.
+cases. The file is ~780KB with four datasets — watch it if many are added.
 
 ## Frontend decisions new here
 
@@ -74,6 +75,27 @@ cases. The file is ~700KB with three datasets — watch it if many are added.
   wrap to two lines everywhere. MSC section names are phrases, and at TaxoQuiz's
   176px they were cut to "Boundary value problem…".
 - `api.ts` has no server path any more; TaxoQuiz's FastAPI layer was not ported.
+- **`hide_names`** in a manifest keeps node names out of sight — explore's
+  second line, its search results, the popup's subtitle. For instruments and
+  languages the names are Wikidata and Glottolog IDs, which say nothing to a
+  player.
+- **A suggestion found by an alias says which** (`aliasHint.ts`): "fiddle"
+  offers the xylophone for its alias "straw fiddle", and without the alias
+  beside it the row reads as a mistake. Display only, so no Python twin.
+- **The popup's licence is `info_source`'s**, not the first source's
+  (`words.infoSource`). The first is usually the tree's: languages popups
+  credited Wikipedia's CC BY-SA text to Glottolog's CC BY until Oct 2026.
+- **Two bugs found here that TaxoQuiz probably shares**, since the code came
+  across unchanged:
+  - **A search jump in explore landed nowhere.** The node is not in the DOM on
+    the commit the tree arrives, so the focus effect now retries per frame.
+    And the breadcrumbs the jump adds resize the tree, which re-framed it, so
+    the jumped-to node is kept in the middle through a resize (`jumped`)
+    until a pan, tap or re-root.
+  - **A link to the round already saved opened explore** when explore was the
+    tree's last view. It resumes the round now.
+- **At 390px every round control fits two rows**: "New" for "New
+  instrument", no "Seed" caption, and slimmer seed-row buttons.
 
 ## Data notes
 
@@ -89,8 +111,18 @@ cases. The file is ~700KB with three datasets — watch it if many are added.
   Without both, Persian, Arabic, Hebrew and Swahili were missing.
 - **Animals** is converted from TaxoQuiz's committed example by
   `build_animals.py`; it reads `../TaxoQuiz` by default.
+- **Instruments** (`build_instruments.py`, whose docstring has every decision):
+  Wikidata's P1762 codes at ≥12 sitelinks; class names from Wikipedia's four
+  *List of …phones by Hornbostel–Sachs number* articles, which win over the
+  main article because they use the numbering Wikidata does (the main article
+  disagrees on drum shapes and brass bores). Names are tidied to read out of
+  context (`tidy`, `LABELS`), and the build **fails** on a relative name such
+  as "With fingerholes" that has no label, so a new threshold asks for one.
+  Electrophones follow the 2011 MIMO revision, which no article lists: names
+  only, since the popup credits its text to Wikipedia. Three codes are
+  corrected by hand (`CODE_FIXES`): the bayan, the Appalachian dulcimer and
+  the music box. They are upstream errors, and leads for fixing Wikidata.
+  An electric guitar shares only the root with a guitar. That is the
+  classification (electrophones are a class of their own), not a bug.
 - **Rejected**: countries on UN M49 — the UN's terms forbid redistribution and
-  derivative works. **Next idea**: musical instruments by Hornbostel–Sachs
-  number (Wikidata P1762, CC0, ~520 instruments at ≥10 sitelinks); blocked on
-  names for the class codes, which Wikidata mostly lacks (MIMO's revised H-S
-  table is the likely source).
+  derivative works.

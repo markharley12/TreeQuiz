@@ -17,11 +17,14 @@ about it.
 |---|---:|---:|---|---|
 | **Maths** | 517 fields | 5 | [MSC2020](https://msc2020.org), the Mathematics Subject Classification, with a curated branch/area layer above its 63 subjects | ladder: branch → area → subject → section |
 | **Languages** | 415 languages | 14 | [Glottolog 5.3](https://glottolog.org)'s family tree, languages chosen by how many Wikipedias cover them | none: placed by the tree's shape alone |
+| **Instruments** | 428 instruments | 9 | The [Hornbostel–Sachs](https://en.wikipedia.org/wiki/Hornbostel%E2%80%93Sachs) classification, by what vibrates; instruments and their numbers from [Wikidata](https://www.wikidata.org/wiki/Property:P1762) | none |
 | **Animals** | 530 species | 21 | TaxoQuiz's hand-curated taxonomy | the Linnaean ladder |
 
 Each tree was picked to test something different. Maths is shallow with clean
 ranks. Languages has no ranks at all, so warmth comes from the tree's shape
-alone. Animals is TaxoQuiz's own data, and its game comes back out unchanged.
+alone. Instruments is a classification whose codes *are* the tree: a violin is
+321.322-71 and a guitar 321.322-5, so they share 321.322, necked box lutes.
+Animals is TaxoQuiz's own data, and its game comes back out unchanged.
 
 ![A round of Maths](docs/images/game.png)
 
@@ -160,6 +163,14 @@ Indo-European, Italian and French narrower groups of Romance, and Spanish its
 closest one. Nothing in the languages manifest says how wide a family is; the
 colours come from the tree's shape alone.
 
+![A round of Instruments: the answer is the cello](docs/images/instruments.png)
+
+Instruments work the same way. The answer above is the cello. The tuba is an
+aerophone and shares nothing with it. The piano is a chordophone too, but a
+zither by Hornbostel–Sachs, so that is all it shares. The harp is a composite chordophone like
+the cello, the sitar a necked lute, and the guitar a necked *box* lute like
+the cello. The viola is bowed as well, so it shares the cello's closest group.
+
 ## Layout
 
 ```
@@ -197,8 +208,15 @@ popup.
   [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
   doi:[10.5281/zenodo.15525265](https://doi.org/10.5281/zenodo.15525265).
   Choice of languages from [Wikidata](https://www.wikidata.org) (CC0).
+- **Instruments**: instruments and their Hornbostel–Sachs numbers from
+  [Wikidata](https://www.wikidata.org) (CC0). Three numbers are corrected by
+  hand. Class names come from English Wikipedia's *Hornbostel–Sachs* article
+  and its four lists by number, after von Hornbostel & Sachs (1914), and are
+  shortened where a name only reads under its parent. The electrophone class
+  names are TreeQuiz's own, following the 2011 MIMO revision that Wikidata's
+  numbers use.
 - **Animals**: the taxonomy is TaxoQuiz's hand-curated tree.
-- **Popup text** for languages and animals is from English Wikipedia,
+- **Popup text** for languages, instruments and animals is from English Wikipedia,
   [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/); every entry
   links its article. Images are linked from Wikimedia Commons and carry their
   own licences.

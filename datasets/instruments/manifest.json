@@ -1,0 +1,95 @@
+{
+  "order": 3,
+  "title": "Musical instruments",
+  "short_title": "Instruments",
+  "prompt": "Guess the secret instrument by how it makes its sound.",
+  "blurb": "About 430 instruments, from the violin to the vuvuzela, sorted by what vibrates.",
+  "noun": "instrument",
+  "noun_plural": "instruments",
+  "bulk_unlock": 0.5,
+  "info_source": "Wikipedia",
+  "hide_names": true,
+  "long_labels": true,
+  "sources": [
+    {
+      "name": "Wikidata",
+      "url": "https://www.wikidata.org/wiki/Property:P1762",
+      "licence": "CC0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "note": "The instruments and their Hornbostel–Sachs numbers, chosen by how many Wikipedias cover them; three numbers corrected by hand"
+    },
+    {
+      "name": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Hornbostel%E2%80%93Sachs",
+      "licence": "CC BY-SA 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "note": "Class names, after von Hornbostel & Sachs (1914), from the Hornbostel–Sachs article and its lists by number, shortened where a name only reads under its parent; popup text. Electrophone classes follow the 2011 MIMO revision, in TreeQuiz's words. Images are linked from Wikimedia Commons and carry their own licences"
+    }
+  ],
+  "checks": {
+    "closer": [
+      {
+        "to": "Q8355",
+        "order": [
+          "Q8371",
+          "Q6607",
+          "Q47369",
+          "Q5994",
+          "Q8338"
+        ]
+      },
+      {
+        "to": "Q8338",
+        "order": [
+          "Q1569742",
+          "Q131168",
+          "Q189388",
+          "Q8343",
+          "Q51290",
+          "Q8355"
+        ]
+      },
+      {
+        "to": "Q8343",
+        "order": [
+          "Q8345",
+          "Q9798",
+          "Q8377",
+          "Q11405",
+          "Q79838",
+          "Q5994"
+        ]
+      },
+      {
+        "to": "Q208421",
+        "order": [
+          "Q211028",
+          "Q270200",
+          "Q189737",
+          "Q483994",
+          "Q190172"
+        ]
+      },
+      {
+        "to": "Q165666",
+        "order": [
+          "Q220971",
+          "Q206987",
+          "Q183932",
+          "Q39777",
+          "Q185003",
+          "Q208421"
+        ]
+      },
+      {
+        "to": "Q78987",
+        "order": [
+          "Q685663",
+          "Q743659",
+          "Q105891",
+          "Q6607"
+        ]
+      }
+    ]
+  }
+}

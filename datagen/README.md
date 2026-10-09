@@ -10,6 +10,7 @@ the source again.
 | `import_tree.py` | any tree you write yourself | an indented outline or a `name,parent` CSV |
 | `build_maths.py` | `datasets/maths` | MSC2020's CSV from msc2020.org |
 | `build_languages.py` | `datasets/languages` | Glottolog's languoid table, Wikidata's sitelinks, Wikipedia's summaries |
+| `build_instruments.py` | `datasets/instruments` | Wikidata's Hornbostel–Sachs numbers (P1762), class names from Wikipedia's Hornbostel–Sachs articles |
 | `build_animals.py` | `datasets/animals` | TaxoQuiz's committed example (`--taxoquiz ../TaxoQuiz`) |
 
 `common.py` is what they share: `write_dataset` validates a tree against its
@@ -51,6 +52,13 @@ world.
 - **Lossy sources.** MSC's CSV is Latin-1 and turned every other character into
   `?` ("Randi? index"). `build_maths.py` repairs the ten it found and fails on
   any new one.
+- **Two sources numbering differently.** Wikipedia's *Hornbostel–Sachs*
+  article puts goblet drums at 211.25 and calls 423.233 "sets of slide
+  trumpets". Its own *List of membranophones* has conical drums at 211.25,
+  and the list of aerophones has cylindrical bore at 423.233, which is the
+  numbering Wikidata files instruments by. Merged naively, an ashiko would have
+  been a goblet drum. Check what a source's codes *mean* against items you
+  know, not only that they parse.
 - **Pass-throughs.** A group with one child is never anyone's LCA. Splice it
   out unless it is worth reading on its own (a language family with one member
   still says something).

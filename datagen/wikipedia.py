@@ -79,7 +79,7 @@ def info_entry(summary: dict | None) -> dict | None:
     """A summary in `info.json`'s shape, or None to leave the node without one."""
     if not summary or not summary.get("description"):
         return None
-    entry = {"description": summary["description"]}
+    entry = {"description": summary["description"].strip()}
     if summary.get("image_url"):
         entry["image_url"] = summary["image_url"]
     if summary.get("url"):
