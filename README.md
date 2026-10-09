@@ -19,12 +19,15 @@ about it.
 | **Languages** | 415 languages | 14 | [Glottolog 5.3](https://glottolog.org)'s family tree, languages chosen by how many Wikipedias cover them | none: placed by the tree's shape alone |
 | **Instruments** | 428 instruments | 9 | The [Hornbostel–Sachs](https://en.wikipedia.org/wiki/Hornbostel%E2%80%93Sachs) classification, by what vibrates; instruments and their numbers from [Wikidata](https://www.wikidata.org/wiki/Property:P1762) | none |
 | **Animals** | 530 species | 21 | TaxoQuiz's hand-curated taxonomy | the Linnaean ladder |
+| **Chess** | 446 openings | 11 | [Lichess's opening list](https://github.com/lichess-org/chess-openings), on the tree of the openings' own moves | none |
 
 Each tree was picked to test something different. Maths is shallow with clean
 ranks. Languages has no ranks at all, so warmth comes from the tree's shape
 alone. Instruments is a classification whose codes *are* the tree: a violin is
 321.322-71 and a guitar 321.322-5, so they share 321.322, necked box lutes.
-Animals is TaxoQuiz's own data, and its game comes back out unchanged.
+Animals is TaxoQuiz's own data, and its game comes back out unchanged. Chess
+is a tree nobody drew: an opening *is* its moves, so two openings share exactly
+the moves they agree on.
 
 ![A round of Maths](docs/images/game.png)
 
@@ -45,7 +48,7 @@ node shows *which branch* the answer is on, never how deep.
   once, each one counted.
 - **Explore** has no secret: open the tree anywhere and read it. Every node has
   a popup. For maths that's its MSC topics; for animals and languages it's the
-  Wikipedia summary.
+  Wikipedia summary; for chess, the position's board.
 - Each tree keeps its own round, so switching tree loses nothing.
 
 ## Playing
@@ -171,6 +174,16 @@ zither by Hornbostel–Sachs, so that is all it shares. The harp is a composite 
 the cello, the sitar a necked lute, and the guitar a necked *box* lute like
 the cello. The viola is bowed as well, so it shares the cello's closest group.
 
+![A round of Chess: the answer is the Dragon](docs/images/chess.png)
+
+Chess has no classification at all. A position is a node, named by its line,
+and each opening hangs from the position it names, so the tree is the moves
+themselves and every branch point is a move where two openings part. The answer
+above is the Dragon. The French shares 1.e4 with it; the Taimanov and the
+Delayed Alapin share 2.Nf3, then turn off with 2…e6. The Najdorf shares all the
+way to 5.Nc3, and only Black's fifth move tells it from the answer. Every
+position's popup draws its board.
+
 ## Layout
 
 ```
@@ -216,7 +229,10 @@ popup.
   names are TreeQuiz's own, following the 2011 MIMO revision that Wikidata's
   numbers use.
 - **Animals**: the taxonomy is TaxoQuiz's hand-curated tree.
-- **Popup text** for languages, instruments and animals is from English Wikipedia,
+- **Chess**: the openings, their ECO codes and moves are
+  [Lichess's](https://github.com/lichess-org/chess-openings) collection, in
+  the public domain (CC0). The boards are drawn by the builder.
+- **Popup text** for languages, instruments, animals and chess is from English Wikipedia,
   [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/); every entry
   links its article. Images are linked from Wikimedia Commons and carry their
   own licences.

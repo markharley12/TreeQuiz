@@ -427,7 +427,7 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
 
   // Won or gave up: either way the round is finished and nothing more can be guessed.
   const over = won || revealed
-  const closest = closestGuess(treeData)
+  const closest = closestGuess(treeData, manifest)
   const score = guesses.length + hintPoints
   const nextHintCost = hintCost(score)
   const newRound = mode === 'practice' && (
@@ -477,7 +477,7 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
         <GuessInput
           onGuess={(label) => guessAll([label])}
           onBulkGuess={guessAll}
-          bulk={bulkScope(treeData, bulkUnlock(manifest))}
+          bulk={bulkScope(treeData, bulkUnlock(manifest), manifest)}
           disabled={over}
           exclude={guesses}
           noun={leaf}

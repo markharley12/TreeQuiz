@@ -5,6 +5,7 @@
 // spacer rows that make vertical distance mean taxonomic depth rather than
 // tree level. See the notes on each.
 import type { TreeNode } from './api'
+import type { ChainStyle } from './engine/tree'
 
 export interface D3Data {
   name: string
@@ -15,9 +16,13 @@ export interface D3Data {
 // Collapsing a single-child chain joins the labels for display; `name` has to
 // be joined the same way, or the popup opens on one taxon out of the several
 // the node now stands for.
-export function compress(node: TreeNode): TreeNode {
-  const children = node.children.map(compress)
-  if (node.node_type === 'ancestor' && children.length === 1 && children[0].node_type === 'ancestor') {
+//
+// Where labels are steps of a path the root is where the path starts, not a
+// step, so it stays a box of its own: joined, it read "Start 1.e4".
+export function compress(node: TreeNode, style?: ChainStyle, isRoot = true): TreeNode {
+  const children = node.children.map((c) => compress(c, style, false))
+  const keep = isRoot && style?.chain_order === 'root_first'
+  if (!keep && node.node_type === 'ancestor' && children.length === 1 && children[0].node_type === 'ancestor') {
     const child = children[0]
     return {
       ...child,
@@ -26,6 +31,38 @@ export function compress(node: TreeNode): TreeNode {
     }
   }
   return { ...node, children }
+}
+
+/** Steps of a path joined as they are read: "1.e4", "1…c5", "2.Nf3" make
+ *  "1.e4 c5 2.Nf3" where the style trims each later step's "1…". */
+export function joinSteps(steps: string[], style?: ChainStyle): string {
+  const trim = style?.chain_trim ? new RegExp(style.chain_trim) : null
+  return steps.map((s, i) => (i > 0 && trim ? s.replace(trim, '') : s)).join(' ')
+}
+
+/** A compressed label as it is read. `compress` always joins deepest first,
+ *  because the layout code finds nodes by the parts of a label; where a
+ *  dataset's labels are steps of a path (`chain_order: "root_first"`), the
+ *  steps are put back in the order they were taken. Display only. */
+export function chainText(label: string, style?: ChainStyle): string {
+  return style?.chain_order === 'root_first' ? joinSteps(label.split(' › ').reverse(), style) : label
+}
+
+/** The groups from just below the root down to `to`, read as one path:
+ *  "1.e4 c5 2.Nf3". Where labels are steps, the last on its own says only
+ *  where the path ended, not what it shares. Null when `to` is not in `tree`. */
+export function pathText(tree: TreeNode, to: TreeNode, style?: ChainStyle): string | null {
+  const walk = (n: TreeNode, above: string[]): string[] | null => {
+    const here = n === tree ? above : [...above, n.label]
+    if (n === to) return here
+    for (const c of n.children) {
+      const found = walk(c, here)
+      if (found) return found
+    }
+    return null
+  }
+  const steps = walk(tree, [])
+  return steps === null ? null : (joinSteps(steps, style) || to.label)
 }
 
 // How many layout rows to spend on an edge spanning `gap` taxonomic ranks.

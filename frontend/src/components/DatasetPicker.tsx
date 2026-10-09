@@ -11,13 +11,17 @@ interface Props {
 /** The trees there are to play, as cards: which one is a choice the front page
  *  should show at a glance rather than bury in the settings menu. */
 export default function DatasetPicker({ selected, onPick }: Props) {
+  // At most four across, and rows as even as that allows: five trees went four
+  // and a stray one, and read better as three and two.
+  const rows = Math.ceil(DATASETS.length / 4)
+  const across = Math.ceil(DATASETS.length / rows)
   return (
     <Box
       role="radiogroup"
       aria-label="Tree"
       sx={{
         display: 'grid', gap: 1.25,
-        gridTemplateColumns: { xs: '1fr 1fr', sm: `repeat(${Math.min(DATASETS.length, 4)}, 1fr)` },
+        gridTemplateColumns: { xs: '1fr 1fr', sm: `repeat(${across}, 1fr)` },
       }}
     >
       {DATASETS.map(({ id, manifest }) => {

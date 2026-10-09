@@ -61,6 +61,14 @@ SYNTHETIC: list[tuple[dict | None, dict]] = [
                    n("Near", "subclass", n("Near sp", "species")),
                    n("B", "clade", n("B1", "clade", n("B2", "clade", n("B3", "clade",
                      n("Far", "subclass", n("Far sp", "species"))))))))),
+    # A child interpolated to exactly its parent's warmth: C is placed against
+    # the genus ten steps down and lands on 2.5, which is where P sits against
+    # the order beside it. Equal must count as not warmer, or the tie stands.
+    (LINNAEAN, n("Root", "kingdom", n("C0", "class",
+                 n("P", None, n("F", "order", n("f sp", "species")),
+                   n("C", None, n("U1", None, n("U2", None, n("U3", None, n("U4", None, n("U5", None,
+                     n("U6", None, n("U7", None, n("U8", None, n("U9", None,
+                       n("G", "genus", n("g sp", "species")))))))))))))))),
     # No ladder at all; ties below broken toward the longer path.
     (None, n("root", None,
              n("a", None, n("near"), n("x", None, n("y", None, n("deep")))),
@@ -107,8 +115,11 @@ def dataset_cases(ds: dataset.Dataset, rng: random.Random) -> dict:
     fp = seed.fingerprint(lv)
     bodies = [seed._encode(hashlib.sha256(f"{ds.id}{i}".encode()).digest(), seed.BODY_LEN) for i in range(24)]
 
+    # Every case is a whole game state or slice, so the file grows by a quarter
+    # megabyte a dataset at these counts; they were cut once, in Oct 2026, to
+    # the fewest that still reach every rule (the specials below stay).
     rounds = []
-    for i in range(14):
+    for i in range(9):
         secret = rng.choice(labels)
         guesses = rng.sample(labels, rng.randint(1, 6))
         if i % 3 == 0:
@@ -128,18 +139,23 @@ def dataset_cases(ds: dataset.Dataset, rng: random.Random) -> dict:
     words = sorted({w for lab in labels for w in lab.lower().split()})
     queries = ["", "a", "e", "ar", "the", "on", "(", "#2", *rng.sample(words, 10),
                labels[3].lower(), labels[3][:4]]
+    # The exclusion list is the first 40 labels, written once rather than into
+    # every case that uses it.
+    exclude = labels[:40]
     suggest = []
     for q in queries:
-        for limit, exclude in ((50, []), (5, labels[:40])):
-            suggest.append({"q": q, "limit": limit, "exclude": exclude,
-                            "result": game.suggest(ds, q, limit, exclude)})
+        for limit, excluding in ((50, False), (5, True)):
+            suggest.append({"q": q, "limit": limit, "excluding": excluding,
+                            "result": game.suggest(ds, q, limit, exclude if excluding else [])})
 
     names = [x["name"] for x in all_nodes(ds.tree)]
     internal = [x["name"] for x in all_nodes(ds.tree) if x.get("children")]
     roots = [None, *rng.sample(internal, 4), lv[5]["name"], "No such node"]
     subtrees = []
     for root in roots:
-        for depth, budget in ((None, 200), (None, 40), (2, None), (1, 7)):
+        # The large budget only from the top, where it is the app's first screen.
+        shapes = ((None, 200), (None, 40), (2, None), (1, 7)) if root is None else ((None, 40), (2, None), (1, 7))
+        for depth, budget in shapes:
             subtrees.append({"root": root, "depth": depth, "budget": budget,
                              **attempt(explore.subtree, ds, root, depth, budget)})
     # A budget met exactly by a level: stops at `>`, not `>=`.
@@ -158,11 +174,12 @@ def dataset_cases(ds: dataset.Dataset, rng: random.Random) -> dict:
                       for d in (date(2026, 1, 1), date(2026, 10, 8), date(2027, 2, 28))],
         },
         "game": rounds,
+        "suggest_exclude": exclude,
         "suggest": suggest,
         "explore": {
             "subtree": subtrees,
             "lineage": [{"name": x, **attempt(explore.lineage, ds, x)}
-                        for x in [*rng.sample(names, 4), "No such node"]],
+                        for x in [*rng.sample(names, 2), "No such node"]],
             "search": [{"q": q, "limit": lim, "result": explore.search(ds, q, lim)}
                        for q in [*rng.sample(words, 6), "a", " e ", ""] for lim in (25, 3)],
             "stats": explore.stats(ds),

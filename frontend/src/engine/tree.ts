@@ -52,7 +52,19 @@ export interface Manifest {
   /** Its node names are opaque keys (Wikidata or Glottolog IDs), so they are
    *  not shown beside the labels. */
   hide_names?: boolean
+  /** How a collapsed chain of labels reads. Deepest first by default
+   *  ("Carnivora › Mammalia"), which leads with the most specific name; root
+   *  first, joined by spaces, where the labels are steps of a path — moves of
+   *  a chess opening, "1.e4 1…c5 2.Nf3". */
+  chain_order?: 'deepest_first' | 'root_first'
+  /** A pattern taken off the start of every step but the first in a root-first
+   *  chain: a chess move's "1…" says whose move it is, which the step before
+   *  has already said. */
+  chain_trim?: string
 }
+
+/** How a dataset's chains of labels read; see `chain_order`. */
+export type ChainStyle = Pick<Manifest, 'chain_order' | 'chain_trim'>
 
 export interface Ladder {
   /** Lower-cased rank name to level. */

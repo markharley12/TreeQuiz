@@ -15,6 +15,9 @@ export interface StoredInfo {
   /** What the node contains that the tree does not show — for a maths section,
    *  its MSC topics. */
   items?: string[]
+  /** A line under the title, for what identifies the node beyond its label —
+   *  a chess opening's moves. Not the source's text, so no licence follows it. */
+  subtitle?: string
 }
 
 export interface Info extends StoredInfo {

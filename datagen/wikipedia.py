@@ -70,6 +70,45 @@ def summaries(titles: list[str], lang: str = "en") -> dict[str, dict | None]:
     return {t: cache.get(t) for t in titles}
 
 
+INTRO_BATCH = 20   # the most plain-text extracts one query returns
+
+
+def intros(titles: list[str], lang: str = "en") -> dict[str, str | None]:
+    """Title to the whole lead section as plain text, or None.
+
+    The summary endpoint stops at the first block it cannot render as prose,
+    which for a chess opening is the move list in its first sentence: the
+    French Defence came back as "characterised by the moves:1. e4 e6" and no
+    more. TextExtracts gives the lead to its end. Titles should be canonical,
+    as `summaries` returns them; redirects are followed all the same.
+    """
+    path = CACHE / "wikipedia" / f"{lang}-intro.json"
+    cache: dict[str, str | None] = read_json(path) if path.exists() else {}
+    todo = [t for t in dict.fromkeys(titles) if t not in cache]
+    if todo:
+        print(f"wikipedia: {len(todo)} of {len(set(titles))} intros to fetch")
+    for i in range(0, len(todo), INTRO_BATCH):
+        batch = todo[i:i + INTRO_BATCH]
+        query = urllib.parse.urlencode({
+            "action": "query", "prop": "extracts", "exintro": 1, "explaintext": 1,
+            "redirects": 1, "format": "json", "formatversion": 2, "titles": "|".join(batch),
+        })
+        data = _get(f"https://{lang}.wikipedia.org/w/api.php?{query}") or {}
+        q = data.get("query", {})
+        # A title comes back as itself, normalised, or as a redirect's target.
+        back = {t: t for t in batch}
+        for hop in (*q.get("normalized", []), *q.get("redirects", [])):
+            for t, now in list(back.items()):
+                if now == hop["from"]:
+                    back[t] = hop["to"]
+        text = {p["title"]: p.get("extract") for p in q.get("pages", [])}
+        for t in batch:
+            cache[t] = text.get(back[t]) or None
+        write_json_atomic(path, cache)
+        time.sleep(DELAY_S)
+    return {t: cache.get(t) for t in titles}
+
+
 def title_from_url(url: str) -> str:
     """'https://en.wikipedia.org/wiki/English_language' -> 'English language'."""
     return urllib.parse.unquote(url.rsplit("/wiki/", 1)[1]).replace("_", " ")

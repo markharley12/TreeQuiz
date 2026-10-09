@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { TreeNode } from './api'
 import {
-  BOX_SIZES, DOWN_FOCUS, SPACER, anchorAt, compress, countNodes, findAnchor, gameSpacing, nodeInView,
+  BOX_SIZES, DOWN_FOCUS, SPACER, anchorAt, chainText, compress, countNodes, findAnchor, gameSpacing, nodeInView, pathText,
   nodeToD3, nodeWellPlaced,
   rowsForGap, sameView, viewForAnchor, viewOnNode,
   type D3Data,
 } from './gameLayout'
+import { DATASETS } from './engine/datasets'
 
 function node(partial: Partial<TreeNode> & { label: string; depth: number }): TreeNode {
   return {
@@ -98,6 +99,47 @@ describe('compress', () => {
 
   it('leaves a lone node alone', () => {
     expect(compress(node({ label: 'Animalia', depth: 0 })).label).toBe('Animalia')
+  })
+})
+
+describe('compress for a path', () => {
+  it('keeps the root a box of its own, since it is where the path starts', () => {
+    const tree = node({ label: 'Start', depth: 0, children: [
+      node({ label: '1.e4', depth: 1, children: [node({ label: '1…c5', depth: 2, children: [
+        node({ label: 'Sicilian Defense', depth: 3, node_type: 'guess' }),
+      ] })] }),
+    ] })
+    const out = compress(tree, { chain_order: 'root_first' })
+    expect(out.label).toBe('Start')
+    expect(out.children[0].label).toBe('1…c5 › 1.e4')
+    expect(compress(tree).label).toBe('1…c5 › 1.e4 › Start')
+  })
+})
+
+describe('chainText', () => {
+  it('reads a chain of steps root first, joined by spaces', () => {
+    // compress joins deepest first; the moves are put back in playing order.
+    expect(chainText('2.Nf3 › 1…c5 › 1.e4', { chain_order: 'root_first' })).toBe('1.e4 1…c5 2.Nf3')
+    // And Black's move number goes where White's move has just said it.
+    const chess = { chain_order: 'root_first', chain_trim: '^\\d+…' } as const
+    expect(chainText('3…a6 4.Ba4 › 2.Nf3 › 1…c5 › 1.e4', chess)).toBe('1.e4 c5 2.Nf3 a6 4.Ba4')
+  })
+
+  it('leaves a taxonomy deepest first', () => {
+    expect(chainText('Carnivora › Laurasiatheria')).toBe('Carnivora › Laurasiatheria')
+  })
+})
+
+describe('pathText', () => {
+  it('names a node by every label from below the root down to it', () => {
+    const deep = node({ label: '2.Nf3', depth: 3 })
+    const tree = node({ label: 'Start', depth: 0, children: [
+      node({ label: '1.e4', depth: 1, children: [node({ label: '1…c5', depth: 2, children: [deep] })] }),
+    ] })
+    expect(pathText(tree, deep)).toBe('1.e4 1…c5 2.Nf3')
+    expect(pathText(tree, deep, { chain_trim: '^\\d+…' })).toBe('1.e4 c5 2.Nf3')
+    expect(pathText(tree, tree)).toBe('Start')
+    expect(pathText(tree, node({ label: 'elsewhere', depth: 1 }))).toBeNull()
   })
 })
 
@@ -343,5 +385,13 @@ describe('getting back to where you were', () => {
     expect(findAnchor(nodes, 'Carnivora › Laurasiatheria')?.x).toBe(0)   // split: its first name
     expect(findAnchor(nodes, 'Felidae')?.x).toBe(2)                     // joined into a chain
     expect(findAnchor(nodes, 'Ursidae')).toBeNull()
+  })
+})
+
+describe('shipped chain styles', () => {
+  it('compile, so a bad pattern fails here and not on a phone', () => {
+    for (const { id, manifest } of DATASETS) {
+      if (manifest.chain_trim) expect(() => new RegExp(manifest.chain_trim!), id).not.toThrow()
+    }
   })
 })

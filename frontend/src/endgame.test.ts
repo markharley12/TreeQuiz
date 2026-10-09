@@ -115,6 +115,44 @@ describe('bulk guessing', () => {
   })
 })
 
+/** A chess round: labels are steps, so a group is named by its whole path. */
+const CHESS = { chain_order: 'root_first', chain_trim: '^\\d+…' } as const
+
+function moves(): TreeNode {
+  return node({
+    label: 'Start', rank: 'Position', on_secret_path: true, children: [
+      node({
+        label: '1.e4', rank: 'Position', depth: 1, warmth: 0.1, on_secret_path: true, children: [
+          node({
+            label: '1…c5', rank: 'Position', depth: 2, warmth: 0.6, on_secret_path: true, children: [
+              node({ label: 'Sicilian Defense', node_type: 'guess', depth: 3, lca_depth: 2, lca_warmth: 0.6 }),
+              node({ label: '???', name: null, rank: '', node_type: 'secret', depth: 3, on_secret_path: true }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+}
+
+describe('a tree whose labels are steps of a path', () => {
+  it('names the shared group by the path to it, not its last step', () => {
+    const closest = closestGuess(moves(), CHESS)
+    expect(closest?.clade).toBe('1.e4 c5')
+    expect(describeClosest(closest!)).toBe(
+      'Your closest guess, Sicilian Defense, shared the position 1.e4 c5 — 60% of the way.')
+  })
+
+  it('names the bulk guess group the same way', () => {
+    expect(bulkScope(moves(), 0.5, CHESS)?.label).toBe('1.e4 c5')
+  })
+
+  it('leaves every other tree named by the label', () => {
+    expect(closestGuess(moves())?.clade).toBe('1…c5')
+    expect(closestGuess(tree(), { chain_order: 'deepest_first' })?.clade).toBe('Panthera')
+  })
+})
+
 describe('describeClosest', () => {
   it('reads as a sentence with the rank, the group and a percentage', () => {
     expect(describeClosest({ guess: 'tiger', clade: 'Panthera', rank: 'Genus', warmth: 5 / 6 }))

@@ -11,6 +11,8 @@
 import type { TreeNode } from './api'
 import { matchTier } from './engine/game'
 import { displayName } from './names'
+import { pathText } from './gameLayout'
+import type { ChainStyle } from './engine/tree'
 
 /** The most leaves one bulk guess may cover — the cap, not the unlock level, is
  *  what stops a bulk guess becoming a skip. Measured in TaxoQuiz: "stingray" in
@@ -37,9 +39,15 @@ function allNodes(node: TreeNode, out: TreeNode[] = []): TreeNode[] {
   return out
 }
 
+/** How a group is named in a sentence: by its label, or where labels are the
+ *  steps of a path (`chain_order: "root_first"`), by the whole path to it. */
+function groupLabel(tree: TreeNode, node: TreeNode, style?: ChainStyle): string {
+  return (style?.chain_order === 'root_first' ? pathText(tree, node, style) : null) ?? node.label
+}
+
 /** The guess that got closest, and the group it shared with the secret. Null
  *  before any guess. On a tie, the first guess found wins. */
-export function closestGuess(tree: TreeNode | null): Closest | null {
+export function closestGuess(tree: TreeNode | null, style?: ChainStyle): Closest | null {
   if (!tree) return null
   const nodes = allNodes(tree)
   let best: TreeNode | undefined
@@ -53,7 +61,7 @@ export function closestGuess(tree: TreeNode | null): Closest | null {
   const shared = nodes.find((n) => n.on_secret_path && n.node_type !== 'secret' && n.depth === depth)
   return {
     guess: best.label,
-    clade: shared?.label ?? '',
+    clade: shared ? groupLabel(tree, shared, style) : '',
     rank: shared?.rank ?? '',
     warmth: best.lca_warmth ?? 0,
   }
@@ -86,10 +94,10 @@ export interface BulkScope {
  *  nothing the tree has not already said. That includes a group a hint revealed:
  *  the hint was paid for, and knowing the family is knowing the family.
  *  `unlock` is the dataset's `bulk_unlock`. */
-export function bulkScope(tree: TreeNode | null, unlock: number): BulkScope | null {
+export function bulkScope(tree: TreeNode | null, unlock: number, style?: ChainStyle): BulkScope | null {
   const known = deepestKnown(tree)
-  if (!known?.name || known.warmth < unlock) return null
-  return { name: known.name, label: known.label, rank: known.rank ?? '' }
+  if (!tree || !known?.name || known.warmth < unlock) return null
+  return { name: known.name, label: groupLabel(tree, known, style), rank: known.rank ?? '' }
 }
 
 /** What the next hint adds to the score: the score again, or 10 if that is more.

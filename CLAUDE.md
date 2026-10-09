@@ -11,9 +11,9 @@ unchanged, and this file covers what is new.
 
 ## Status
 
-Four datasets — **maths** (MSC2020, 517 fields), **languages** (Glottolog, 415),
-**instruments** (Hornbostel–Sachs, 428), **animals** (TaxoQuiz's 530). Python
-suite 106 tests, frontend 369, both green;
+Five datasets — **maths** (MSC2020, 517 fields), **languages** (Glottolog, 415),
+**instruments** (Hornbostel–Sachs, 428), **animals** (TaxoQuiz's 530), **chess**
+(Lichess, 446 openings). Python suite 123 tests, frontend 376, both green;
 CI and Pages workflows written but **the repo has not been pushed** and has no
 GitHub remote yet. No Android build (TaxoQuiz's Capacitor setup was left out).
 
@@ -59,7 +59,13 @@ As in TaxoQuiz: Python is the reference, `frontend/src/engine/` the port, and
 `tests/conformance.py` writes `conformance.json` over **every shipped dataset**
 plus synthetic trees. Adding or rebuilding a dataset therefore means
 regenerating it; `conformance.test.ts` also fails if a shipped dataset has no
-cases. The file is ~780KB with four datasets — watch it if many are added.
+cases. Every case is a whole game state or slice, so each dataset costs about
+150KB: chess took the file past 1MB, and the counts were cut (Oct 2026) to the
+fewest that reach every rule — 9 random rounds plus the specials, the 200-node
+slice only from the top, the suggest exclusion list written once. 769KB with
+five. The cut was checked by mutation and found an old gap: a child landing
+*exactly* on its parent's warmth (`<=` against `<` in the floor) was reached by
+no case; the synthetic `C0`/`P`/`C` tree now reaches it.
 
 ## Frontend decisions new here
 
@@ -96,6 +102,19 @@ cases. The file is ~780KB with four datasets — watch it if many are added.
   to win over the link.
 - **At 390px every round control fits two rows**: "New" for "New
   instrument", no "Seed" caption, and slimmer seed-row buttons.
+- **`chain_order: "root_first"`** in a manifest, for a tree whose labels are
+  steps of a path (chess moves). `compress` still joins deepest first with
+  " › ", since `findAnchor` and the popup split on it; `chainText` reverses the
+  steps for display only, and `chain_trim` (a JS pattern) comes off every step
+  but the first, so "2.Nf3" then "2…Nc6" read "2.Nf3 Nc6". In such a tree the
+  root is not merged into its child ("Start 1.e4" read badly), and the give-up
+  sentence and the bulk-guess header name a group by its whole path
+  (`pathText`), since its own label is only the last step.
+- **A popup entry may carry a `subtitle`** — a chess opening's moves — set
+  under the title. And the source's licence line now needs text to follow:
+  a board drawn by the builder is nobody's CC BY-SA.
+- **The picker balances its rows**, at most four across: five trees are three
+  and two, not four and a stray.
 
 ## Data notes
 
@@ -124,5 +143,19 @@ cases. The file is ~780KB with four datasets — watch it if many are added.
   the music box. They are upstream errors, and leads for fixing Wikidata.
   An electric guitar shares only the root with a guitar. That is the
   classification (electrophones are a class of their own), not a bug.
+- **Chess** (`build_chess.py`, whose docstring has every decision): Lichess's
+  CC0 list, pinned to a commit. The tree is the moves: positions are internal
+  nodes named by their line, each opening a leaf under the position it names,
+  a position with one way on merged into the next, so depth counts branch
+  points. Kept: every family, every variation with a named subline, and `ALSO`
+  (the Fried Liver, the Sveshnikov…) — 446 of 3,177 names. Leaves are ranked
+  by ECO code, positions "Position". Every node's popup is its board, an SVG
+  data URL of ~800 bytes drawn with the system's chess glyphs; 650 of them
+  gzip from 850KB to ~30KB, since boards differ only in their pieces. 102
+  openings have Wikipedia text: titles are guessed, so see the datagen README
+  for what a guess must pass. Moves are replayed by `san.py`, stdlib only, and
+  verified once against python-chess on all 3,865 Lichess lines (positions and
+  last moves equal); its castling now refuses a blocked or attacked path, which
+  that check could not have caught, since Lichess's moves are all legal.
 - **Rejected**: countries on UN M49 — the UN's terms forbid redistribution and
   derivative works.

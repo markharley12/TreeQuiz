@@ -145,6 +145,11 @@ export default function InfoPopup({ names, onClose }: Props) {
                       {name}
                     </Typography>
                   )}
+                  {info?.subtitle && (
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                      {info.subtitle}
+                    </Typography>
+                  )}
                 </DialogTitle>
 
                 <DialogContent>
@@ -165,8 +170,9 @@ export default function InfoPopup({ names, onClose }: Props) {
                       {info?.description && <Description text={info.description} />}
                       {info?.items && info.items.length > 0 && <Items items={info.items} />}
                       {/* The notice the text's licence asks for, now that it is
-                        * served to anyone from a public website. */}
-                      {(info?.url || manifest?.info_source) && (
+                        * served to anyone from a public website. Not under a
+                        * picture alone: a board drawn here is nobody's text. */}
+                      {(info?.url || ((info?.description || info?.items?.length) && manifest?.info_source)) && (
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
                           {info?.url ? (
                             <Link href={info.url} target="_blank" rel="noopener">

@@ -1,0 +1,73 @@
+{
+  "order": 5,
+  "title": "Chess openings",
+  "short_title": "Chess",
+  "prompt": "Guess the secret opening by the moves it shares with yours.",
+  "blurb": "About 450 named openings, from the Sicilian to the Bongcloud, on the tree of their moves.",
+  "noun": "opening",
+  "noun_plural": "openings",
+  "bulk_unlock": 0.5,
+  "info_source": "Wikipedia",
+  "long_labels": true,
+  "chain_order": "root_first",
+  "chain_trim": "^\\d+…",
+  "sources": [
+    {
+      "name": "Lichess",
+      "url": "https://github.com/lichess-org/chess-openings",
+      "licence": "CC0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "note": "The openings, their ECO codes and their moves; the tree is the moves themselves. Boards drawn by TreeQuiz"
+    },
+    {
+      "name": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/List_of_chess_openings",
+      "licence": "CC BY-SA 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "note": "Popup text, for the openings that have an article"
+    }
+  ],
+  "checks": {
+    "closer": [
+      {
+        "to": "Sicilian Defense: Najdorf Variation",
+        "order": [
+          "Sicilian Defense: Dragon Variation",
+          "Sicilian Defense: Taimanov Variation",
+          "Sicilian Defense: Alapin Variation",
+          "French Defense",
+          "Queen's Gambit Declined"
+        ]
+      },
+      {
+        "to": "Queen's Gambit Declined",
+        "order": [
+          "Slav Defense",
+          "Queen's Pawn Game: London System",
+          "King's Indian Defense",
+          "Sicilian Defense"
+        ]
+      },
+      {
+        "to": "Ruy Lopez: Berlin Defense",
+        "order": [
+          "Ruy Lopez: Marshall Attack",
+          "Italian Game",
+          "Petrov's Defense",
+          "Vienna Game",
+          "Sicilian Defense",
+          "English Opening"
+        ]
+      },
+      {
+        "to": "French Defense: Winawer Variation",
+        "order": [
+          "French Defense: Classical Variation",
+          "French Defense: Tarrasch Variation",
+          "Caro-Kann Defense",
+          "Dutch Defense"
+        ]
+      }
+    ]
+  }
+}

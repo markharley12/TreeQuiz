@@ -28,7 +28,8 @@ interface DatasetCases {
     daily: { date: string; secret: string }[]
   }
   game: ({ secret: string; guesses: string[]; hints: number } & Outcome)[]
-  suggest: { q: string; limit: number; exclude: string[]; result: string[] }[]
+  suggest_exclude: string[]
+  suggest: { q: string; limit: number; excluding: boolean; result: string[] }[]
   explore: {
     subtree: ({ root: string | null; depth: number | null; budget: number | null } & Outcome)[]
     lineage: ({ name: string } & Outcome)[]
@@ -124,7 +125,9 @@ describe.each(golden.datasets.map((c) => [c.id, c] as const))('dataset %s', (id,
   })
 
   it('suggests the same names in the same order', () => {
-    for (const s of c.suggest) expect(suggest(ds, s.q, s.limit, s.exclude)).toStrictEqual(s.result)
+    for (const s of c.suggest) {
+      expect(suggest(ds, s.q, s.limit, s.excluding ? c.suggest_exclude : [])).toStrictEqual(s.result)
+    }
   })
 
   it('slices, lineages, searches and counts the same', () => {

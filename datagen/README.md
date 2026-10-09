@@ -12,6 +12,12 @@ the source again.
 | `build_languages.py` | `datasets/languages` | Glottolog's languoid table, Wikidata's sitelinks, Wikipedia's summaries |
 | `build_instruments.py` | `datasets/instruments` | Wikidata's Hornbostel–Sachs numbers (P1762), class names from Wikipedia's Hornbostel–Sachs articles |
 | `build_animals.py` | `datasets/animals` | TaxoQuiz's committed example (`--taxoquiz ../TaxoQuiz`) |
+| `build_chess.py` | `datasets/chess` | Lichess's opening list (CC0), pinned to a commit; Wikipedia's leads where an opening has an article |
+
+`san.py` replays chess moves for `build_chess.py`, which draws each position
+as an SVG board. It is checked against python-chess once rather than depending
+on it: every one of Lichess's 3,865 lines replays to the same position and
+the same last move.
 
 `common.py` is what they share: `write_dataset` validates a tree against its
 manifest and refuses one that fails; `fetch` downloads once;
@@ -62,6 +68,15 @@ world.
 - **Pass-throughs.** A group with one child is never anyone's LCA. Splice it
   out unless it is worth reading on its own (a language family with one member
   still says something).
+- **Guessed titles.** Chess openings have no Wikidata link to an article, so
+  `build_chess.py` guesses titles, and a guess finds the wrong page easily:
+  "Chigorin Variation" is Mikhail Chigorin, "Taimanov Variation" a list of four
+  openings, and "Sicilian Defence, Kan Variation" redirects to the Sicilian's
+  own article. An article is believed only when its title names the opening,
+  the moves in its lead agree with the opening's, and it is not the article of
+  an opening above. Wikipedia's summary endpoint also stops at the move list
+  that chess leads open with, so the text comes from the whole lead instead
+  (`wikipedia.intros`).
 - **Pseudo-groups.** A filing category is not a lineage. Glottolog's "Sign
   Language" and "Artificial Language" would score as kinship, so they are left
   out.

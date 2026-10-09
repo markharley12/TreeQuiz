@@ -9,7 +9,7 @@ import { useCoarsePointer } from '../media'
 import { frameTree, placedNodes, TRANSLATE } from '../framing'
 import { cachedInfo, useInfoCache } from '../infoCache'
 import {
-  anchorAt, BOX_SIZES, boxFor, compress, countNodes, findAnchor, gameSpacing, nodeToD3, nodeWellPlaced, sameView, SPACER,
+  anchorAt, BOX_SIZES, boxFor, chainText, compress, countNodes, findAnchor, gameSpacing, nodeToD3, nodeWellPlaced, sameView, SPACER,
   viewForAnchor, viewOnNode, type Anchor, type Placed, type View,
 } from '../gameLayout'
 import { deepestKnown } from '../endgame'
@@ -47,6 +47,7 @@ function NodeLabel({ nodeData, size, onClick, onHover, onHoverEnd, colorFor, tin
   const primary = clickable ? taxa.split(' › ')[0] : ''
   const thumb = primary ? cachedInfo(primary, dataset)?.image_url ?? '' : ''
   const warmth = nodeData.attributes?.warmth as number
+  const text = displayName(chainText(nodeData.name, entryFor(dataset)?.manifest))
 
   const color = colorFor(warmth)
 
@@ -130,7 +131,7 @@ function NodeLabel({ nodeData, size, onClick, onHover, onHoverEnd, colorFor, tin
     <Box
       sx={boxSx}
       data-node={nodeData.name}
-      title={nodeData.name}
+      title={text}
       onClick={handleClick}
       onPointerEnter={(e) => onHover(primary, e)}
       onPointerLeave={onHoverEnd}
@@ -141,7 +142,7 @@ function NodeLabel({ nodeData, size, onClick, onHover, onHoverEnd, colorFor, tin
         overflow: 'hidden', minWidth: 0, lineHeight: 1.15, overflowWrap: 'anywhere',
         display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
       }}>
-        {displayName(nodeData.name)}
+        {text}
       </Box>
     </Box>
   )
@@ -336,7 +337,7 @@ export default function GameTree({ treeData, focusLabel, newestLabel }: GameTree
   if (!treeData) return null
   const hasSecret = deepestKnown(treeData) !== null
 
-  const compressed = compress(treeData)
+  const compressed = compress(treeData, entryFor(dataset)?.manifest)
   const d3Data = nodeToD3(compressed)
   // No dataset anchor: the API sends each node's rank position directly, and
   // a rank means the same thing in every dataset. See colors.ts.

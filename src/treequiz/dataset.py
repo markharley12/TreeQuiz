@@ -29,6 +29,12 @@ Manifest fields (only `title` is required):
     long_labels   true when node names are phrases: the app draws wider boxes
     hide_names    true when node names are opaque keys (Wikidata, Glottolog
                   IDs): the app shows only labels
+    chain_order   "root_first" when labels are steps of a path, such as chess
+                  moves: a collapsed chain then reads root first, joined by
+                  spaces. Default "deepest_first", joined by " › "
+    chain_trim    a JavaScript pattern removed from the start of every step
+                  but the first in such a chain: chess's "^\\d+…", so that
+                  "2.Nf3" then "2…Nc6" read "2.Nf3 Nc6"
 
 Tree nodes:
 
