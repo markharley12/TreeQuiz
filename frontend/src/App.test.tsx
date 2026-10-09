@@ -454,6 +454,17 @@ describe('shared links', () => {
     expect(startRound).not.toHaveBeenCalled()
   })
 
+  it('resumes the round a link names even if explore was open last', async () => {
+    // Explore is remembered per tree, and it used to win over the link: the
+    // link to your own round opened explore instead of the round.
+    localStorage.setItem(STORAGE_KEY, session())
+    localStorage.setItem(STORAGE_KEY.replace('session', 'view'), 'explore')
+    arriveAt('?seed=RZVM-X6N69Q')
+    await renderApp()
+    expect(await screen.findByText('Tiger')).toBeTruthy()
+    expect(screen.queryByTestId('explore-tree')).toBeNull()
+  })
+
   it('opens a link on the tree it names', async () => {
     arriveAt('?d=maths&seed=RZVM-X6N69Q')
     // main.tsx applies the link's tree before the first render; so does this.

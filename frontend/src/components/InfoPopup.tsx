@@ -8,6 +8,7 @@ import { useSettings } from '../settings'
 import { loadInfo } from '../infoCache'
 import { entryFor } from '../engine/datasets'
 import { displayName } from '../names'
+import { infoSource } from '../words'
 
 interface Props {
   names: string[]   // one or more node names (a compressed chain has several)
@@ -98,9 +99,9 @@ export default function InfoPopup({ names, onClose }: Props) {
   const [loading, setLoading] = useState(true)
   const { dataset } = useSettings()
   const manifest = entryFor(dataset)?.manifest
-  // The licence the dataset's text carries, for the notice under it: the first
-  // source that names one. CC BY-SA and BY-NC-SA both ask for it.
-  const licensed = manifest?.sources?.find((s) => s.licence)
+  // The licence the popup text carries, for the notice under it. CC BY-SA and
+  // BY-NC-SA both ask for it.
+  const licensed = manifest ? infoSource(manifest) : undefined
 
   useEffect(() => {
     let cancelled = false
@@ -139,7 +140,7 @@ export default function InfoPopup({ names, onClose }: Props) {
                     <Box component="span">{displayName(info?.label || name)}</Box>
                     {info?.rank && <Chip label={info.rank} size="small" />}
                   </Box>
-                  {info && info.label !== name && (
+                  {info && info.label !== name && !manifest?.hide_names && (
                     <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
                       {name}
                     </Typography>

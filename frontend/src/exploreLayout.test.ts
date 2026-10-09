@@ -366,6 +366,11 @@ describe('subtitle', () => {
     expect(subtitle(node('Panthera leo', { label: 'lion', child_count: 0 }))).toBe('Panthera leo')
   })
 
+  it('hides a name the manifest calls an opaque key', () => {
+    // "Q176926" under "cuíca" says nothing to anyone playing.
+    expect(subtitle(node('Q176926', { label: 'cuíca', rank: '', child_count: 0 }), 'instruments', false)).toBe('')
+  })
+
   it('falls back to the rank when a leaf is labelled by its name', () => {
     expect(subtitle(node('x', { rank: 'species', child_count: 0 }))).toBe('species')
   })

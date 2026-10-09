@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { Autocomplete, TextField, Button, Box, ButtonBase, Paper, type PaperProps } from '@mui/material'
-import { fetchExplore, fetchSuggestions, type ExploreNode } from '../api'
+import { fetchExplore, fetchMatchedAliases, fetchSuggestions, type ExploreNode } from '../api'
 import { useSettings } from '../settings'
 import { displayName } from '../names'
 import { withArticle } from '../words'
@@ -47,6 +47,8 @@ function leafLabels(node: ExploreNode, out: string[] = []): string[] {
 
 export default function GuessInput({ onGuess, onBulkGuess, bulk, disabled, exclude = [], noun = 'answer' }: Props) {
   const [options, setOptions] = useState<string[]>([])
+  // Beside a suggestion its name does not explain, the alias that found it.
+  const [why, setWhy] = useState<Map<string, string>>(new Map())
   const [value, setValue] = useState<string | null>(null)
   const [inputValue, setInputValue] = useState('')
   const [open, setOpen] = useState(false)
@@ -83,6 +85,7 @@ export default function GuessInput({ onGuess, onBulkGuess, bulk, disabled, exclu
       return
     }
     const results = await fetchSuggestions(dataset, query, SUGGESTIONS, exclude)
+    const aliases = await fetchMatchedAliases(dataset, query, results)
     let next: BulkOption | null = null
     if (bulk && onBulkGuess && isBulkQuery(query)) {
       try {
@@ -94,6 +97,7 @@ export default function GuessInput({ onGuess, onBulkGuess, bulk, disabled, exclu
       }
     }
     setOptions(results)
+    setWhy(aliases)
     setOffer(next)
   }
 
@@ -175,6 +179,16 @@ export default function GuessInput({ onGuess, onBulkGuess, bulk, disabled, exclu
         // is what gets submitted — the engine matches a guess exactly and
         // answers "Not in this dataset: 'Lion'" otherwise.
         getOptionLabel={displayName}
+        renderOption={({ key, ...props }, option) => (
+          <li key={key} {...props}>
+            {displayName(option)}
+            {why.has(option) && (
+              <Box component="span" sx={{ ml: 1, color: 'text.secondary', fontSize: '0.85em' }}>
+                {why.get(option)}
+              </Box>
+            )}
+          </li>
+        )}
         isOptionEqualToValue={(a, b) => a === b}
         disabled={disabled}
         autoHighlight

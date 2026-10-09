@@ -209,21 +209,22 @@ export function spliceIn(node: ExploreNode, name: string, replacement: ExploreNo
 }
 
 /** Under a box's label: for a leaf, its name where the label is something
- *  else (a binomial under "lion", a code under "Graph theory"), else its rank;
- *  for a group, its rank and how many leaves it holds. */
-export function subtitle(node: ExploreNode, plural = 'leaves'): string {
-  if (node.child_count === 0) return node.name !== node.label ? node.name : node.rank
+ *  else (a binomial under "lion", a code under "Graph theory") and the
+ *  manifest does not hide names, else its rank; for a group, its rank and how
+ *  many leaves it holds. */
+export function subtitle(node: ExploreNode, plural = 'leaves', showNames = true): string {
+  if (node.child_count === 0) return showNames && node.name !== node.label ? node.name : node.rank
   return `${node.rank || 'group'} · ${node.leaf_count.toLocaleString()} ${plural}`
 }
 
-export function toD3(node: ExploreNode, expanded: Set<string>, dataset: string, plural = 'leaves'): D3Data {
+export function toD3(node: ExploreNode, expanded: Set<string>, dataset: string, plural = 'leaves', showNames = true): D3Data {
   const isOpen = expanded.has(node.name)
   const isLeaf = node.child_count === 0
   return {
     name: node.name,
     attributes: {
       label: node.label,
-      sub: subtitle(node, plural),
+      sub: subtitle(node, plural, showNames),
       // Empty until something has looked this node up. Read straight from the
       // cache rather than threaded through as a prop: the component subscribes
       // to the cache, so a lookup landing rebuilds this and the picture appears.
@@ -237,7 +238,7 @@ export function toD3(node: ExploreNode, expanded: Set<string>, dataset: string, 
       hasHidden: !isLeaf && !isOpen,
       collapsed: !isOpen,
     },
-    children: isOpen ? node.children.map((c) => toD3(c, expanded, dataset, plural)) : [],
+    children: isOpen ? node.children.map((c) => toD3(c, expanded, dataset, plural, showNames)) : [],
   }
 }
 

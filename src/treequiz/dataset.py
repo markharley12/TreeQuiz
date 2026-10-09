@@ -25,6 +25,10 @@ Manifest fields (only `title` is required):
     info_source   what the popup text is, e.g. "Wikipedia" — shown under it
     checks        {"closer": [{"to": name, "order": [name, ...]}]} — orderings
                   of relatedness that must hold; see validate.py
+    order         where the tree sits in the app's picker; lower first
+    long_labels   true when node names are phrases: the app draws wider boxes
+    hide_names    true when node names are opaque keys (Wikidata, Glottolog
+                  IDs): the app shows only labels
 
 Tree nodes:
 

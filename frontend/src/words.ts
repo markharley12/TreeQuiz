@@ -2,7 +2,7 @@
  * The words a dataset's manifest supplies, with the fallbacks the app uses when
  * it supplies none. Every place the app would have said "animal" asks here.
  */
-import type { Manifest } from './engine/tree'
+import type { Manifest, Source } from './engine/tree'
 
 export function noun(m: Manifest): string {
   return m.noun || 'leaf'
@@ -27,4 +27,14 @@ export function withArticle(word: string): string {
  *  could not bulk-guess stingrays at family level. */
 export function bulkUnlock(m: Manifest): number {
   return typeof m.bulk_unlock === 'number' ? m.bulk_unlock : 0.5
+}
+
+/** The source the popup text comes from, for the licence notice under it: the
+ *  one `info_source` names. The first source with a licence is the fallback
+ *  only, because it is usually the *tree's* source — the languages popups
+ *  credited Wikipedia's CC BY-SA text to Glottolog's CC BY that way. */
+export function infoSource(m: Manifest): Source | undefined {
+  const named = m.info_source?.toLowerCase()
+  return (named ? m.sources?.find((s) => s.name.toLowerCase().startsWith(named)) : undefined)
+    ?? m.sources?.find((s) => s.licence)
 }

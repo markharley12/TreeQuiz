@@ -8,6 +8,7 @@
   "noun_plural": "languages",
   "bulk_unlock": 0.5,
   "info_source": "Wikipedia",
+  "hide_names": true,
   "sources": [
     {
       "name": "Glottolog 5.3",

@@ -12,10 +12,12 @@ import type { ExploreNode } from '../api'
 
 const fetchSuggestions = vi.fn()
 const fetchExplore = vi.fn()
+const fetchMatchedAliases = vi.fn()
 
 vi.mock('../api', () => ({
   fetchSuggestions: (...a: unknown[]) => fetchSuggestions(...a),
   fetchExplore: (...a: unknown[]) => fetchExplore(...a),
+  fetchMatchedAliases: (...a: unknown[]) => fetchMatchedAliases(...a),
 }))
 
 function species(name: string): ExploreNode {
@@ -46,6 +48,7 @@ async function renderInput(props: { bulk?: { name: string; label: string; rank: 
 beforeEach(() => {
   fetchSuggestions.mockResolvedValue(['leopard', 'snow leopard'])
   fetchExplore.mockResolvedValue(PANTHERA)
+  fetchMatchedAliases.mockResolvedValue(new Map())
 })
 
 afterEach(cleanup)
@@ -110,5 +113,23 @@ describe('bulk guessing in the suggestions', () => {
     expect(await screen.findByText('Jaguar')).toBeTruthy()
     await waitFor(() => expect(fetchExplore).toHaveBeenCalled())
     expect(screen.queryByText(/Guess all/)).toBeNull()
+  })
+})
+
+describe('a suggestion found by an alias', () => {
+  it('shows the alias beside the name, and still guesses by the name', async () => {
+    fetchSuggestions.mockResolvedValue(['leopard', 'jaguar'])
+    fetchMatchedAliases.mockResolvedValue(new Map([['jaguar', 'yaguara']]))
+    const { input, onGuess } = await renderInput({ bulk: null })
+    fireEvent.change(input, { target: { value: 'yag' } })
+
+    const [leopard, jaguar] = await screen.findAllByRole('option')
+    expect(leopard.textContent).toBe('Leopard')
+    expect(jaguar.textContent).toBe('Jaguaryaguara')
+    expect(fetchMatchedAliases).toHaveBeenCalledWith(expect.any(String), 'yag', ['leopard', 'jaguar'])
+
+    fireEvent.click(jaguar)
+    fireEvent.click(screen.getByRole('button', { name: 'Guess' }))
+    expect(onGuess).toHaveBeenCalledWith('jaguar')
   })
 })

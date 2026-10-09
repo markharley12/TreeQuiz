@@ -12,6 +12,7 @@ import { lineage, search, stats, subtree } from './engine/explore'
 import { infoFor, type Info } from './engine/info'
 import { tagOf, fingerprint } from './engine/seed'
 import { leavesOf } from './engine/game'
+import { matchedAliases } from './aliasHint'
 
 export type { TreeNode } from './engine/game'
 export type { ExploreNode, ExploreHit, ExploreStats, Lineage } from './engine/explore'
@@ -34,6 +35,11 @@ export async function startRound(dataset: string, opts: { daily?: boolean; seed?
 
 export async function fetchSuggestions(dataset: string, q: string, limit = 50, exclude: string[] = []): Promise<string[]> {
   return suggest(await loadDataset(dataset), q, limit, exclude)
+}
+
+/** Why each of `labels` was suggested for `q`, where its name does not say. */
+export async function fetchMatchedAliases(dataset: string, q: string, labels: string[]): Promise<Map<string, string>> {
+  return matchedAliases(await loadDataset(dataset), q, labels)
 }
 
 /** Null for a round with no guesses and no hints, which the app never asks for. */

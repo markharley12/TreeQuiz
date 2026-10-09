@@ -49,6 +49,9 @@ export interface Manifest {
   order?: number
   /** Its names are phrases, so boxes are drawn wider. */
   long_labels?: boolean
+  /** Its node names are opaque keys (Wikidata or Glottolog IDs), so they are
+   *  not shown beside the labels. */
+  hide_names?: boolean
 }
 
 export interface Ladder {

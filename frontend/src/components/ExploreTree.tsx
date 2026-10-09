@@ -22,6 +22,10 @@ import { nounPlural, noun } from '../words'
 
 type NodeDatum = CustomNodeElementProps['nodeDatum']
 
+/** Frames a jump waits for its node to be laid out: a sixth of a second, as
+ *  GameTree waits for a guess. */
+const FOCUS_TRIES = 10
+
 interface NodeBoxProps {
   nodeData: NodeDatum
   color: string
@@ -205,8 +209,14 @@ export default function ExploreTree() {
   const [viewKey, setViewKey] = useState(0)
   // Set by a jump, cleared once the view has been moved onto that node.
   const [focusName, setFocusName] = useState<string | null>(null)
+  // The node last jumped to, until the reader moves on from it: a pan, a tap
+  // or a re-root. A resize puts it back in the middle instead of re-framing
+  // the tree, and a jump causes one, since it adds the breadcrumbs above the
+  // tree — which re-framed the view a frame after the jump had centred it.
+  const jumped = useRef<string | null>(null)
   const [confirmExpand, setConfirmExpand] = useState(false)
   const manifest = entryFor(dataset)?.manifest
+  const showNames = !manifest?.hide_names
   const plural = manifest ? nounPlural(manifest) : 'leaves'
 
   // The library re-applies a position only when the props change, so moving to
@@ -226,6 +236,7 @@ export default function ExploreTree() {
     if (sameView(reported, shownRef.current)) return
     actual.current = reported
     // A real pan or pinch: where the reader is now is where they are.
+    jumped.current = null
     if (backRef.current) setBackState(null)
   }, [setBackState])
 
@@ -251,7 +262,7 @@ export default function ExploreTree() {
   // changes it, and a box fitted to portrait is wrong in landscape.
   // Counted here rather than beside the JSX, because the framing effect below
   // needs it and the early returns further down would put it out of reach.
-  const rendered = tree ? countRendered(toD3(tree, expanded, dataset, plural)) : 0
+  const rendered = tree ? countRendered(toD3(tree, expanded, dataset, plural, showNames)) : 0
   const hasTree = tree !== null
   useEffect(() => {
     const el = containerRef.current
@@ -278,6 +289,10 @@ export default function ExploreTree() {
       : { x: width / 2, y: size.h / 2 + 40 }
     setBackState(null)
     moveTo({ ...pin, zoom: size.zoom })
+    if (jumped.current) {
+      setFocusName(jumped.current)
+      return
+    }
     // A phone keeps the pin: `fitWidth` sized the box so the root and one child
     // column fill the view exactly, and centring content that already fills the
     // frame only shifts it off the left edge it was fitted to.
@@ -300,18 +315,35 @@ export default function ExploreTree() {
   // component can reproduce without duplicating the library. Without this a
   // jump to Homo sapiens expanded the right lineage and left you looking at
   // Animalia, 59 levels away.
+  //
+  // In a frame, and retried until the node is there: react-d3-tree lays its
+  // nodes out in its own commit, so on the one where the jumped-to tree
+  // arrives the node is not in the DOM yet. Looked up once, it was not found,
+  // the focus was dropped, and the jump left the view where it was — 3,400px
+  // from a violin. The same trap as GameTree's follow-the-guess.
   useEffect(() => {
     if (!focusName || !containerRef.current) return
-    const el = containerRef.current.querySelector(`[data-node="${CSS.escape(focusName)}"]`)
-    const g = el?.closest('g')
-    const m = g?.getAttribute('transform')?.match(/translate\(([-\d.]+)[, ]+([-\d.]+)\)/)
-    if (m) {
-      const { width, height } = containerRef.current.getBoundingClientRect()
-      const zoom = actual.current.zoom
-      moveTo({ x: width / 2 - Number(m[1]) * zoom, y: height / 2 - Number(m[2]) * zoom, zoom })
+    const host = containerRef.current
+    let raf = 0
+    let tries = 0
+    const attempt = () => {
+      const el = host.querySelector(`[data-node="${CSS.escape(focusName)}"]`)
+      const g = el?.closest('g')
+      const m = g?.getAttribute('transform')?.match(/translate\(([-\d.]+)[, ]+([-\d.]+)\)/)
+      if (!m && ++tries < FOCUS_TRIES) {
+        raf = requestAnimationFrame(attempt)
+        return
+      }
+      if (m) {
+        const { width, height } = host.getBoundingClientRect()
+        const zoom = actual.current.zoom
+        moveTo({ x: width / 2 - Number(m[1]) * zoom, y: height / 2 - Number(m[2]) * zoom, zoom })
+      }
+      setBackState(null)
+      setFocusName(null)
     }
-    setBackState(null)
-    setFocusName(null)
+    raf = requestAnimationFrame(attempt)
+    return () => cancelAnimationFrame(raf)
   }, [focusName, tree, moveTo, setBackState])
 
   // Centre the view on the node just tapped open or shut — see viewOnTapped.
@@ -366,6 +398,7 @@ export default function ExploreTree() {
     if (!host) return
     const { width, height } = host.getBoundingClientRect()
     tapped.current = { name, before: anchorAt(placedNodes(host), actual.current, width, height) }
+    jumped.current = null
   }, [])
 
   const toggle = useCallback(async (name: string) => {
@@ -418,6 +451,7 @@ export default function ExploreTree() {
       // The spine stays open regardless of budget, or you would land on a
       // search result that is not on screen.
       setExpanded(seedExpanded(spine, size.show, chain, seedLevels))
+      jumped.current = name
       setFocusName(name)
     } catch {
       setError(`Could not jump to ${name}`)
@@ -434,8 +468,9 @@ export default function ExploreTree() {
       setTree(t)
       setPath(name ? path.slice(0, path.findIndex((p) => p.name === name) + 1) : [{ name: t.name, label: t.label }])
       setExpanded(seedExpanded(t, size.show, [], seedLevels))
-
-      setViewKey((k) => k + 1)    } catch {
+      jumped.current = null
+      setViewKey((k) => k + 1)
+    } catch {
       setError('Could not load that subtree')
     } finally {
       setPending(false)
@@ -470,7 +505,7 @@ export default function ExploreTree() {
   if (error && !tree) return <Alert severity="error" sx={{ m: 3 }}>{error}</Alert>
   if (!tree) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}><CircularProgress /></Box>
 
-  const d3Data = toD3(tree, expanded, dataset, plural)
+  const d3Data = toD3(tree, expanded, dataset, plural, showNames)
   // No dataset anchor: each node carries its own rank position. See colors.ts.
   const colorFor = makeColorScale(colorScheme)
   const tintFor = makeTintScale(colorScheme)
@@ -493,7 +528,7 @@ export default function ExploreTree() {
               <Stack sx={{ minWidth: 0 }}>
                 <Typography variant="body2" noWrap>{displayName(o.label)}</Typography>
                 <Typography variant="caption" color="text.secondary" noWrap>
-                  {o.label !== o.name ? `${o.name} · ` : ''}{o.rank || (o.is_leaf ? (manifest ? noun(manifest) : 'leaf') : 'group')}
+                  {showNames && o.label !== o.name ? `${o.name} · ` : ''}{o.rank || (o.is_leaf ? (manifest ? noun(manifest) : 'leaf') : 'group')}
                   {!o.is_leaf && ` · ${o.leaf_count.toLocaleString()} ${plural}`}
                 </Typography>
               </Stack>

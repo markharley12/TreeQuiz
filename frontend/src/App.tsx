@@ -94,6 +94,11 @@ function inProgress(s: SavedSession | null): s is SavedSession {
   return s !== null && !s.won && !s.revealed && (s.guesses.length > 0 || (s.hints ?? 0) > 0)
 }
 
+/** The seed row's buttons on a phone, with less padding than the theme's
+ *  18px a side and no 64px minimum: at that size three of them pushed "Give
+ *  up" onto a row of its own at 390px. */
+const SEED_ROW_BUTTON = { whiteSpace: 'nowrap', minWidth: { xs: 0, sm: 64 }, paddingInline: { xs: '8px', sm: '18px' } } as const
+
 interface Boot {
   saved: SavedSession | null
   mode: Mode | null
@@ -107,7 +112,8 @@ interface Boot {
  *  or the old round's tree request would race the new one's start. */
 function readBoot(dataset: string, carried: string | null, landing: boolean): Boot {
   const saved = readSession(dataset)
-  if (carried !== null && !(saved && sameSeed(saved.seed, carried))) {
+  if (carried !== null) {
+    if (saved && sameSeed(saved.seed, carried)) return { saved, mode: saved.mode, linked: null, ask: false }
     if (inProgress(saved)) return { saved, mode: saved.mode, linked: carried, ask: true }
     return { saved: null, mode: null, linked: carried, ask: false }
   }
@@ -434,16 +440,22 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
     // everything the page scrolls instead of squashing the guess list.
     <Box sx={{ p: PAGE_PAD, height: '100dvh', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', '& > *': { flexShrink: 0 } }}>
       {header(mode === 'daily' ? 'Daily' : 'Practice', mode === 'practice' && (
-        <Button size="small" sx={{ whiteSpace: 'nowrap' }} onClick={() => startGame('practice')}>New {leaf}</Button>
+        // "New" alone on a phone: "New instrument" beside "Instruments" took the
+        // header to two rows at 390px, where TaxoQuiz's "New animal" fitted.
+        <Button size="small" sx={{ whiteSpace: 'nowrap' }} aria-label={`New ${leaf}`} onClick={() => startGame('practice')}>
+          {narrow ? 'New' : `New ${leaf}`}
+        </Button>
       ))}
 
       {(seed || !over) && (
-        <Stack direction="row" spacing={1} sx={{ mb: { xs: 1, sm: 2 }, alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}>
+        <Stack direction="row" spacing={1} useFlexGap sx={{ mb: { xs: 1, sm: 2 }, alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}>
           {seed && <>
-            <Typography variant="caption" sx={{ color: 'text.secondary', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Seed</Typography>
+            {/* The word goes on a phone, where the row has no room for it and
+              * the code in its chip already looks like what it is. */}
+            <Typography variant="caption" sx={{ color: 'text.secondary', letterSpacing: '0.08em', textTransform: 'uppercase', display: { xs: 'none', sm: 'inline' } }}>Seed</Typography>
             <Chip label={seed} size="small" variant="outlined" sx={{ fontFamily: 'ui-monospace, monospace', fontWeight: 600, letterSpacing: '0.06em' }} />
             <Tooltip title={copied ? 'Copied' : 'Copy a link to this round'} open={copied || undefined}>
-              <Button size="small" onClick={shareRound}>{copied ? 'Copied' : canShareSheet ? 'Share' : 'Copy link'}</Button>
+              <Button size="small" sx={SEED_ROW_BUTTON} onClick={shareRound}>{copied ? 'Copied' : canShareSheet ? 'Share' : 'Copy link'}</Button>
             </Tooltip>
             <Typography variant="caption" sx={{ color: 'text.secondary', display: { xs: 'none', sm: 'inline' }, fontFamily: FONT_DISPLAY, fontStyle: 'italic', fontSize: '0.85rem' }}>
               share this to let someone play the same round
@@ -453,11 +465,11 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
             * row of a phone's screen for controls pressed once a round. */}
           <Box sx={{ flex: 1, minWidth: 0 }} />
           {!over && (
-            <Button size="small" variant="text" sx={{ whiteSpace: 'nowrap' }} disabled={!hintAvailable(treeData)} onClick={() => setConfirmHint(true)}>
+            <Button size="small" variant="text" sx={SEED_ROW_BUTTON} disabled={!hintAvailable(treeData)} onClick={() => setConfirmHint(true)}>
               Hint +{nextHintCost}
             </Button>
           )}
-          {!over && <Button size="small" variant="text" onClick={() => setConfirmGiveUp(true)}>Give up</Button>}
+          {!over && <Button size="small" variant="text" sx={SEED_ROW_BUTTON} onClick={() => setConfirmGiveUp(true)}>Give up</Button>}
         </Stack>
       )}
 
