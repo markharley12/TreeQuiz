@@ -11,9 +11,10 @@ unchanged, and this file covers what is new.
 
 ## Status
 
-Five datasets — **maths** (MSC2020, 517 fields), **languages** (Glottolog, 415),
+Six datasets — **maths** (MSC2020, 517 fields), **languages** (Glottolog, 415),
 **instruments** (Hornbostel–Sachs, 428), **animals** (TaxoQuiz's 530), **chess**
-(Lichess, 446 openings). Python suite 123 tests, frontend 376, both green;
+(Lichess, 446 openings), **physics** (PhySH, 487 topics). Python suite 126
+tests, frontend 394, both green;
 CI and Pages workflows written but **the repo has not been pushed** and has no
 GitHub remote yet. No Android build (TaxoQuiz's Capacitor setup was left out).
 
@@ -63,7 +64,7 @@ cases. Every case is a whole game state or slice, so each dataset costs about
 150KB: chess took the file past 1MB, and the counts were cut (Oct 2026) to the
 fewest that reach every rule — 9 random rounds plus the specials, the 200-node
 slice only from the top, the suggest exclusion list written once. 769KB with
-five. The cut was checked by mutation and found an old gap: a child landing
+five, 918KB with six: trim again if it passes about 1.2MB. The cut was checked by mutation and found an old gap: a child landing
 *exactly* on its parent's warmth (`<=` against `<` in the floor) was reached by
 no case; the synthetic `C0`/`P`/`C` tree now reaches it.
 
@@ -158,5 +159,18 @@ no case; the synthetic `C0`/`P`/`C` tree now reaches it.
   verified once against python-chess on all 3,865 Lichess lines (positions and
   last moves equal); its castling now refuses a blocked or attacked path, which
   that check could not have caught, since Lichess's moves are all legal.
+- **Physics** (`build_physics.py`, whose docstring has every decision): PhySH,
+  the APS's Physics Subject Headings, CC0. Disciplines, then the Research
+  Areas and Physical Systems facets (techniques and professional topics left
+  out; the facet is not a level, being a filing category). PhySH is a
+  lattice, so each concept takes its deepest broader concept, ties to the one
+  with more beneath it, and a top concept the discipline with fewest tops.
+  Fame is a Wikipedia article named for the label (give or take a plural), or
+  a whole-page redirect that does not broaden it, at ≥25 sitelinks; `TITLES`
+  maps 21 compound labels ("Neutron stars & pulsars") by hand, since taking a
+  part by rule found *Light* for "Quantum information with atoms & light".
+  Left out: Networks, the living systems' biology objects (DNA, sperm), and
+  `PRUNE` (paints, cosmetics). A famous concept with one child becomes the
+  leaf, or splicing would lose it — black holes did.
 - **Rejected**: countries on UN M49 — the UN's terms forbid redistribution and
   derivative works.

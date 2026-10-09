@@ -12,6 +12,7 @@ the source again.
 | `build_languages.py` | `datasets/languages` | Glottolog's languoid table, Wikidata's sitelinks, Wikipedia's summaries |
 | `build_instruments.py` | `datasets/instruments` | Wikidata's Hornbostel–Sachs numbers (P1762), class names from Wikipedia's Hornbostel–Sachs articles |
 | `build_animals.py` | `datasets/animals` | TaxoQuiz's committed example (`--taxoquiz ../TaxoQuiz`) |
+| `build_physics.py` | `datasets/physics` | PhySH (CC0), pinned to a commit; fame from Wikipedia titles and Wikidata sitelinks |
 | `build_chess.py` | `datasets/chess` | Lichess's opening list (CC0), pinned to a commit; Wikipedia's leads where an opening has an article |
 
 `san.py` replays chess moves for `build_chess.py`, which draws each position
@@ -77,6 +78,13 @@ world.
   an opening above. Wikipedia's summary endpoint also stops at the move list
   that chess leads open with, so the text comes from the whole lead instead
   (`wikipedia.intros`).
+- **A lattice is not a tree.** PhySH gives 223 concepts several broader
+  ones and files 34 top concepts under several disciplines, so
+  `build_physics.py` picks one parent each — the deepest, then the one with
+  more beneath it (alphabetical order put Lasers under Accelerator
+  subsystems). And a technique that a research area also lists beneath
+  itself is still a technique: Artificial intelligence, filed under Quantum
+  computation, brought deep learning into a physics tree until it was barred.
 - **Pseudo-groups.** A filing category is not a lineage. Glottolog's "Sign
   Language" and "Artificial Language" would score as kinship, so they are left
   out.

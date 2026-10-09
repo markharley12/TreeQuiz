@@ -1,0 +1,81 @@
+{
+  "order": 6,
+  "title": "Physics",
+  "short_title": "Physics",
+  "prompt": "Guess the secret physics topic by where physicists file it.",
+  "blurb": "About 490 topics, from quarks to supernovae, as the American Physical Society files them.",
+  "noun": "topic",
+  "noun_plural": "topics",
+  "bulk_unlock": 0.5,
+  "info_source": "Wikipedia",
+  "long_labels": true,
+  "sources": [
+    {
+      "name": "PhySH",
+      "url": "https://physh.org",
+      "licence": "CC0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "note": "Physics Subject Headings, by the American Physical Society: disciplines, research areas and physical systems. Where PhySH gives a topic several parents, TreeQuiz chose one; topics chosen by how many Wikipedias cover them"
+    },
+    {
+      "name": "Wikipedia",
+      "url": "https://en.wikipedia.org",
+      "licence": "CC BY-SA 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "note": "Popup text. Images are linked from Wikimedia Commons and carry their own licences"
+    }
+  ],
+  "checks": {
+    "closer": [
+      {
+        "to": "Neutron stars & pulsars",
+        "order": [
+          "Binary stars",
+          "Novae & supernovae",
+          "Protons"
+        ]
+      },
+      {
+        "to": "Up quark",
+        "order": [
+          "Charm quark",
+          "Electrons",
+          "Graphene"
+        ]
+      },
+      {
+        "to": "Zeeman effect",
+        "order": [
+          "Stark effect",
+          "Atoms",
+          "Gravitational waves"
+        ]
+      },
+      {
+        "to": "Ferromagnetism",
+        "order": [
+          "Antiferromagnetism",
+          "Glass transition",
+          "Semiconductors",
+          "Dark matter"
+        ]
+      },
+      {
+        "to": "Gravitational waves",
+        "order": [
+          "General relativity",
+          "Dark matter",
+          "Turbulence"
+        ]
+      },
+      {
+        "to": "Meissner effect",
+        "order": [
+          "Josephson effect",
+          "Graphene",
+          "Protons"
+        ]
+      }
+    ]
+  }
+}
