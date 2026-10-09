@@ -85,15 +85,15 @@ cases. The file is ~780KB with four datasets — watch it if many are added.
 - **The popup's licence is `info_source`'s**, not the first source's
   (`words.infoSource`). The first is usually the tree's: languages popups
   credited Wikipedia's CC BY-SA text to Glottolog's CC BY until Oct 2026.
-- **Two bugs found here that TaxoQuiz probably shares**, since the code came
-  across unchanged:
-  - **A search jump in explore landed nowhere.** The node is not in the DOM on
-    the commit the tree arrives, so the focus effect now retries per frame.
-    And the breadcrumbs the jump adds resize the tree, which re-framed it, so
-    the jumped-to node is kept in the middle through a resize (`jumped`)
-    until a pan, tap or re-root.
-  - **A link to the round already saved opened explore** when explore was the
-    tree's last view. It resumes the round now.
+- **A search jump in explore landed nowhere** — a bug TaxoQuiz probably
+  shares, since the code came across unchanged. The node is not in the DOM on
+  the commit the tree arrives, so the focus effect now retries per frame. And
+  the breadcrumbs the jump adds resize the tree, which re-framed it, so the
+  jumped-to node is kept in the middle through a resize (`jumped`) until a
+  pan, tap or re-root.
+- **A link to the round already saved resumes it**, even when explore was the
+  tree's last view. Remembering explore per tree is TreeQuiz's, and it used
+  to win over the link.
 - **At 390px every round control fits two rows**: "New" for "New
   instrument", no "Seed" caption, and slimmer seed-row buttons.
 
