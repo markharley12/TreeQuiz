@@ -6,11 +6,22 @@
  * the puzzles are dealt again from the seed.
  */
 import { storageKey } from './engine/datasets'
+import { dayBefore, dayText } from './results'
 
 export interface OddSession {
   seed: string
   /** The name picked for each puzzle answered so far, in order. */
   answers: string[]
+  /** For the day's set, which day: `YYYY-MM-DD`. */
+  day?: string
+}
+
+/** A day's set, finished: kept per tree, first finish only, as dailies of
+ *  the guessing game are (see results.ts). */
+export interface OddDaily {
+  seed: string
+  answers: string[]
+  right: number
 }
 
 export interface OddTally {
@@ -23,6 +34,7 @@ export interface OddTally {
 
 const sessionKey = (dataset: string) => storageKey('odd', dataset)
 const tallyKey = (dataset: string) => storageKey('oddtally', dataset)
+const dailyKey = (dataset: string) => storageKey('odddaily', dataset)
 
 function read<T>(key: string, valid: (v: unknown) => v is T): T | null {
   try {
@@ -71,11 +83,39 @@ export function recordOddSet(dataset: string, seed: string, right: number): OddT
   return next
 }
 
-/** "TreeQuiz · Cities · odd one out", the score, a mark per puzzle, the link. */
-export function oddShareText(title: string, marks: boolean[], link: string): string {
+const isDailies = (v: unknown): v is Record<string, OddDaily> => typeof v === 'object' && v !== null && !Array.isArray(v)
+
+export function readOddDailies(dataset: string): Record<string, OddDaily> {
+  return read(dailyKey(dataset), isDailies) ?? {}
+}
+
+/** Keep a finished day's set — the first finish only. True if kept. */
+export function recordOddDaily(dataset: string, day: string, record: OddDaily): boolean {
+  const all = readOddDailies(dataset)
+  if (all[day]) return false
+  write(dailyKey(dataset), { ...all, [day]: record })
+  return true
+}
+
+/** Days in a row with the day's set finished, up to today — or yesterday,
+ *  while today's is still to play. Any score keeps it: a set is not won or
+ *  lost, only played. */
+export function oddStreak(records: Record<string, OddDaily>, today: string): number {
+  let streak = 0
+  let day = records[today] ? today : dayBefore(today)
+  while (records[day]) {
+    streak++
+    day = dayBefore(day)
+  }
+  return streak
+}
+
+/** "TreeQuiz · Cities · odd one out", the score, a mark per puzzle, the link.
+ *  A day's set says which day. */
+export function oddShareText(title: string, marks: boolean[], link: string, day?: string): string {
   const right = marks.filter(Boolean).length
   return [
-    `TreeQuiz · ${title} · odd one out`,
+    `TreeQuiz · ${title} · odd one out${day ? ` · ${dayText(day)}` : ''}`,
     `${right}/${marks.length} ${marks.map((m) => (m ? '✅' : '❌')).join('')}`,
     link,
   ].join('\n')

@@ -585,7 +585,7 @@ describe('odd one out', () => {
     expect(await screen.findByText('RZVM-0DD5E7')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /grey wolf/i }))
     expect(await screen.findByText('Right.')).toBeTruthy()
-    expect(JSON.parse(localStorage.getItem('treequiz:odd:animals')!)).toEqual({ seed: 'RZVM-0DD5E7', answers: ['grey wolf'] })
+    expect(JSON.parse(localStorage.getItem('treequiz:odd:animals')!)).toEqual({ seed: 'RZVM-0DD5E7', answers: ['grey wolf'], day: today() })
   })
 
   it('says which it was after a wrong pick', async () => {
@@ -599,18 +599,20 @@ describe('odd one out', () => {
     arriveAt('?d=animals&odd=RZVM-ABCDEF')
     await renderApp()
     expect(await screen.findByText('RZVM-ABCDEF')).toBeTruthy()
-    expect(startOddSet).toHaveBeenCalledWith(DATASET, { seed: 'RZVM-ABCDEF' })
+    expect(startOddSet).toHaveBeenCalledWith(DATASET, expect.objectContaining({ seed: 'RZVM-ABCDEF' }))
     expect(window.location.search).toBe('')
     cleanup()
     startOddSet.mockClear()
     await renderApp()
     expect(await screen.findByText('RZVM-ABCDEF')).toBeTruthy()
-    expect(startOddSet).toHaveBeenCalledWith(DATASET, { seed: 'RZVM-ABCDEF' })
+    expect(startOddSet).toHaveBeenCalledWith(DATASET, expect.objectContaining({ seed: 'RZVM-ABCDEF' }))
   })
 
   it('scores a finished set and counts it once', async () => {
     localStorage.setItem('treequiz:odd:animals', JSON.stringify({ seed: 'RZVM-0DD5E7', answers: [...Array(9).fill('grey wolf'), 'lion'] }))
     localStorage.setItem('treequiz:view:animals', 'odd')
+    // Today's set already played, or it would be dealt in place of a finished set.
+    localStorage.setItem('treequiz:odddaily:animals', JSON.stringify({ [today()]: { seed: 'RZVM-DA1E77', answers: [], right: 5 } }))
     await renderApp()
     expect(await screen.findByText('9 of 10')).toBeTruthy()
     expect(screen.getByLabelText('Your marks').textContent).toBe('✅'.repeat(9) + '❌')
@@ -618,6 +620,29 @@ describe('odd one out', () => {
     await renderApp()
     await screen.findByText('9 of 10')
     expect(JSON.parse(localStorage.getItem('treequiz:oddtally:animals')!)).toMatchObject({ sets: 1, right: 9, best: 9 })
+  })
+
+  it("deals today's set first, and keeps it as the day's once finished", async () => {
+    await renderApp()
+    fireEvent.click(screen.getByRole('button', { name: /odd one out/i }))
+    await screen.findByText('RZVM-0DD5E7')
+    expect(startOddSet).toHaveBeenCalledWith(DATASET, expect.objectContaining({ daily: true }))
+    expect(screen.getByText(/today’s set/i)).toBeTruthy()
+    for (let i = 0; i < 10; i++) {
+      fireEvent.click(await screen.findByRole('button', { name: /grey wolf/i }))
+      fireEvent.click(await screen.findByRole('button', { name: i < 9 ? /^next$/i : /see your score/i }))
+    }
+    expect(await screen.findByText('10 of 10')).toBeTruthy()
+    expect(JSON.parse(localStorage.getItem('treequiz:odddaily:animals')!)[today()]).toMatchObject({ seed: 'RZVM-0DD5E7', right: 10 })
+  })
+
+  it("does not deal today's set twice: a finished day's set opens on its score", async () => {
+    localStorage.setItem('treequiz:odddaily:animals', JSON.stringify({ [today()]: {
+      seed: 'RZVM-0DD5E7', answers: Array(10).fill('lion'), right: 0 } }))
+    await renderApp()
+    fireEvent.click(screen.getByRole('button', { name: /odd one out/i }))
+    expect(await screen.findByText('0 of 10')).toBeTruthy()
+    expect(startOddSet).toHaveBeenCalledWith(DATASET, expect.objectContaining({ seed: 'RZVM-0DD5E7' }))
   })
 
   it('reports a seed from another tree instead of dealing nothing', async () => {

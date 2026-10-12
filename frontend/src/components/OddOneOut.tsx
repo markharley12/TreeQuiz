@@ -11,10 +11,13 @@ import { useEffect, useState } from 'react'
 import { Alert, Box, Button, ButtonBase, Chip, CircularProgress, Stack, Tooltip, Typography } from '@mui/material'
 import { fetchOddReveal, startOddSet, type OddSet, type Reveal } from '../api'
 import { SET_SIZE } from '../engine/odd'
-import { normalise } from '../engine/seed'
+import { normalise, utcToday } from '../engine/seed'
 import { displayName } from '../names'
 import { because } from '../oddReveal'
-import { oddShareText, readOddSession, readOddTally, recordOddSet, writeOddSession, type OddTally } from '../oddStore'
+import {
+  oddShareText, oddStreak, readOddDailies, readOddSession, readOddTally, recordOddDaily, recordOddSet, writeOddSession,
+  type OddTally,
+} from '../oddStore'
 import { shareBase, shareLink } from '../shareLink'
 import { useSharer } from '../sharer'
 import { ACCENT, CARD, FONT_DISPLAY, INK, INK_MUTED, LINE } from '../theme'
@@ -30,8 +33,19 @@ interface Props {
   linkSeed: string | null
 }
 
+/** How to deal: a seed, the answers already given, and the day if the set is
+ *  a day's. A day with no seed deals that day's set. */
+interface Deal {
+  seed?: string
+  resumed?: string[]
+  day?: string
+}
+
 /** A set runs easy to hard; see `treequiz/odd.py`. */
 const TIERS = ['Easy', 'Medium', 'Hard']
+/** As the round's seed row: no 64px minimum and less padding on a phone, or
+ *  four controls take two rows at 390px. */
+const ROW_BUTTON = { whiteSpace: 'nowrap', minWidth: { xs: 0, sm: 64 }, paddingInline: { xs: '8px', sm: '18px' } } as const
 const SEED_CHIP = { fontFamily: 'ui-monospace, monospace', fontWeight: 600, letterSpacing: '0.06em' } as const
 
 export default function OddOneOut({ dataset, title, plural, linkSeed }: Props) {
@@ -43,35 +57,53 @@ export default function OddOneOut({ dataset, title, plural, linkSeed }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [popup, setPopup] = useState<string | null>(null)
   const [tally, setTally] = useState<OddTally>(() => readOddTally(dataset))
+  // The day this set is for, if it is a day's set; null for any other.
+  const [day, setDay] = useState<string | null>(null)
+  const [dailies, setDailies] = useState(() => readOddDailies(dataset))
   const linkSharer = useSharer()
   const resultSharer = useSharer()
+  const today = utcToday()
 
-  function show(next: OddSet, resumed: string[]) {
+  function show(next: OddSet, resumed: string[], forDay: string | null) {
     setError(null)
     setReveal(null)
     setSet(next)
     setAnswers(resumed)
     setShown(Math.min(resumed.length, SET_SIZE))
-    writeOddSession(dataset, { seed: next.seed, answers: resumed })
-    if (resumed.length >= SET_SIZE) countSet(next, resumed)
+    setDay(forDay)
+    writeOddSession(dataset, { seed: next.seed, answers: resumed, ...(forDay ? { day: forDay } : {}) })
+    if (resumed.length >= SET_SIZE) finish(next, resumed, forDay)
   }
 
   const failed = (e: unknown) => setError(e instanceof Error ? e.message : 'Could not deal that set')
 
-  function deal(seed?: string, resumed: string[] = []) {
-    startOddSet(dataset, { seed }).then((next) => show(next, resumed), failed)
+  function deal(how: Deal = {}) {
+    startOddSet(dataset, { seed: how.seed, daily: how.day !== undefined && !how.seed })
+      .then((next) => show(next, how.resumed ?? [], how.day ?? null), failed)
   }
 
-  // On arrival: a link's set, else the set in progress, else a new one. Called
-  // off, so a remount deals once rather than twice.
+  /** Today's set: the record of it once finished, else a fresh deal. */
+  function todays(): Deal {
+    const done = readOddDailies(dataset)[today]
+    return done ? { seed: done.seed, resumed: done.answers, day: today } : { day: today }
+  }
+
+  // On arrival: a link's set; else a set in progress; else today's set while
+  // it is still to play; else the last set, finished. A day's set left from
+  // another day plays on as an ordinary one. Called off, so a remount deals
+  // once rather than twice.
   useEffect(() => {
     const saved = readOddSession(dataset)
-    const [seed, resumed] = linkSeed !== null
-      ? [linkSeed, saved && sameSeed(saved.seed, linkSeed) ? saved.answers : []]
-      : saved ? [saved.seed, saved.answers] : [undefined, []]
+    const savedDay = saved?.day === today ? today : undefined
+    const unfinished = saved !== null && saved.answers.length < SET_SIZE
+    const how: Deal = linkSeed !== null
+      ? { seed: linkSeed, resumed: saved && sameSeed(saved.seed, linkSeed) ? saved.answers : [] }
+      : saved && (unfinished || readOddDailies(dataset)[today])
+        ? { seed: saved.seed, resumed: saved.answers, day: savedDay }
+        : todays()
     let cancelled = false
-    startOddSet(dataset, { seed }).then(
-      (next) => { if (!cancelled) show(next, resumed) },
+    startOddSet(dataset, { seed: how.seed, daily: how.day !== undefined && !how.seed }).then(
+      (next) => { if (!cancelled) show(next, how.resumed ?? [], how.day ?? null) },
       (e) => { if (!cancelled) failed(e) },
     )
     return () => { cancelled = true }
@@ -94,9 +126,15 @@ export default function OddOneOut({ dataset, title, plural, linkSeed }: Props) {
   const over = set !== null && shown >= SET_SIZE
 
   // A finished set counts toward the tally once per seed, whether it was
-  // finished just now or found finished on a reload.
-  function countSet(of: OddSet, given: string[]) {
-    setTally(recordOddSet(dataset, of.seed, given.filter((a, i) => a === of.puzzles[i].odd).length))
+  // finished just now or found finished on a reload; a day's set is kept as
+  // that day's too.
+  function finish(of: OddSet, given: string[], forDay: string | null) {
+    const got = given.filter((a, i) => a === of.puzzles[i].odd).length
+    setTally(recordOddSet(dataset, of.seed, got))
+    if (forDay) {
+      recordOddDaily(dataset, forDay, { seed: of.seed, answers: given, right: got })
+      setDailies(readOddDailies(dataset))
+    }
   }
 
   function choose(label: string) {
@@ -104,13 +142,13 @@ export default function OddOneOut({ dataset, title, plural, linkSeed }: Props) {
     const next = [...answers, label]
     setAnswers(next)
     setReveal(null)
-    writeOddSession(dataset, { seed: set.seed, answers: next })
+    writeOddSession(dataset, { seed: set.seed, answers: next, ...(day ? { day } : {}) })
   }
 
   function advance() {
     setReveal(null)
     setShown(shown + 1)
-    if (set && shown + 1 >= SET_SIZE) countSet(set, answers)
+    if (set && shown + 1 >= SET_SIZE) finish(set, answers, day)
   }
 
   // 1, 2, 3 to choose; Enter or → for the next one.
@@ -148,15 +186,20 @@ export default function OddOneOut({ dataset, title, plural, linkSeed }: Props) {
       <Stack direction="row" spacing={1} useFlexGap sx={{ mb: 1.5, alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}>
         <Chip label={set.seed} size="small" variant="outlined" sx={SEED_CHIP} />
         <Tooltip title={linkSharer.copied ? 'Copied' : 'Copy a link to this set'} open={linkSharer.copied || undefined}>
-          <Button size="small" onClick={() => void linkSharer.share({ url: link() })}>
+          <Button size="small" sx={ROW_BUTTON} onClick={() => void linkSharer.share({ url: link() })}>
             {linkSharer.copied ? 'Copied' : linkSharer.canShareSheet ? 'Share' : 'Copy link'}
           </Button>
         </Tooltip>
         <Box sx={{ flex: 1 }} />
-        <Button size="small" onClick={() => deal()}>New set</Button>
+        {day !== today && (
+          <Button size="small" sx={ROW_BUTTON} onClick={() => deal(todays())}>
+            Today’s set{dailies[today] ? ' ✓' : ''}
+          </Button>
+        )}
+        <Button size="small" sx={ROW_BUTTON} onClick={() => deal()}>New set</Button>
       </Stack>
 
-      <Progress marks={marks} shown={shown} />
+      <Progress marks={marks} shown={shown} today={day === today} />
 
       {over ? (
         <Box sx={{ textAlign: 'center', mt: 4 }}>
@@ -166,7 +209,7 @@ export default function OddOneOut({ dataset, title, plural, linkSeed }: Props) {
             {marks.map((m) => (m ? '✅' : '❌')).join('')}
           </Typography>
           <Stack direction="row" spacing={1.5} useFlexGap sx={{ justifyContent: 'center', mt: 3, flexWrap: 'wrap', rowGap: 1 }}>
-            <Button variant="contained" onClick={() => void resultSharer.share({ text: oddShareText(title, marks, link()) })}>
+            <Button variant="contained" onClick={() => void resultSharer.share({ text: oddShareText(title, marks, link(), day ?? undefined) })}>
               {resultSharer.copied ? 'Copied' : resultSharer.canShareSheet ? 'Share result' : 'Copy result'}
             </Button>
             <Button variant="outlined" onClick={() => deal()}>Another set</Button>
@@ -174,7 +217,11 @@ export default function OddOneOut({ dataset, title, plural, linkSeed }: Props) {
           {tally.sets > 0 && (
             <Typography variant="body2" sx={{ color: 'text.secondary', mt: 3 }}>
               {tally.sets === 1 ? 'Your first set on this tree.' : `${tally.sets} sets on this tree: ${(tally.right / tally.sets).toFixed(1)} right on average, best ${tally.best}.`}
+              {oddStreak(dailies, today) > 1 && ` Today’s set ${oddStreak(dailies, today)} days running.`}
             </Typography>
+          )}
+          {day !== today && !dailies[today] && (
+            <Button sx={{ mt: 1 }} onClick={() => deal(todays())}>Play today’s set</Button>
           )}
         </Box>
       ) : puzzle && (
@@ -250,9 +297,9 @@ export default function OddOneOut({ dataset, title, plural, linkSeed }: Props) {
 }
 
 /** Ten dots: right, wrong, the one on screen, and those to come. */
-function Progress({ marks, shown }: { marks: boolean[]; shown: number }) {
+function Progress({ marks, shown, today }: { marks: boolean[]; shown: number; today: boolean }) {
   return (
-    <Stack direction="row" spacing={0.75} aria-label={`Puzzle ${Math.min(shown + 1, SET_SIZE)} of ${SET_SIZE}`} sx={{ alignItems: 'center' }}>
+    <Stack direction="row" spacing={0.75} aria-label={shown < SET_SIZE ? `Puzzle ${shown + 1} of ${SET_SIZE}` : 'Set finished'} sx={{ alignItems: 'center' }}>
       {Array.from({ length: SET_SIZE }, (_, i) => {
         const done = i < marks.length
         return (
@@ -266,8 +313,10 @@ function Progress({ marks, shown }: { marks: boolean[]; shown: number }) {
           />
         )
       })}
-      <Typography variant="caption" sx={{ pl: 1, color: 'text.secondary' }}>
-        {Math.min(shown + 1, SET_SIZE)} of {SET_SIZE}
+      <Typography variant="caption" sx={{ pl: 1, color: 'text.secondary', whiteSpace: 'nowrap' }}>
+        {shown < SET_SIZE && `${shown + 1} of ${SET_SIZE}`}
+        {shown < SET_SIZE && today && ' · '}
+        {today && 'Today’s set'}
       </Typography>
     </Stack>
   )

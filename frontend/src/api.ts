@@ -42,11 +42,12 @@ export interface OddSet {
   puzzles: Puzzle[]
 }
 
-/** Deal an odd-one-out set: a new one, or the one a seed names. Rejects with a
- *  message for the player if the seed is malformed or for another tree. */
-export async function startOddSet(dataset: string, opts: { seed?: string } = {}): Promise<OddSet> {
+/** Deal an odd-one-out set: a new one, the day's, or the one a seed names.
+ *  Rejects with a message for the player if the seed is malformed or for
+ *  another tree. */
+export async function startOddSet(dataset: string, opts: { seed?: string; daily?: boolean } = {}): Promise<OddSet> {
   const ds = await loadDataset(dataset)
-  const seed = opts.seed ? normalise(opts.seed) : pickSeed(ds)
+  const seed = opts.seed ? normalise(opts.seed) : pickSeed(ds, { daily: opts.daily })
   return { seed, puzzles: makeSet(ds, seed) }
 }
 

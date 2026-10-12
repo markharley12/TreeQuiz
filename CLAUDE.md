@@ -87,7 +87,12 @@ for it. The reveal (`oddReveal.ts`, display only) draws the three as a
 little tree: where all three meet, the pair's group, the leaves, each box
 carrying the labels it skips. Links are `?d=<id>&odd=<seed>`; the set in
 progress is `treequiz:odd:<id>`, the tally `treequiz:oddtally:<id>`, and
-`view:<id>` remembers odd one out as it does explore.
+`view:<id>` remembers odd one out as it does explore. **Today's set** is
+the day's seed (the guessing daily's, dealt by the odd rules, so a
+different game); it is dealt on arrival while unplayed, kept first finish
+only under `treequiz:odddaily:<id>`, and reopens on its score rather than
+being dealt twice. Its streak counts days played, not won: a set has a
+score, not an outcome.
 
 ## Frontend decisions new here
 
