@@ -11,11 +11,11 @@ unchanged, and this file covers what is new.
 
 ## Status
 
-Seven datasets — **maths** (MSC2020, 517 fields), **languages** (Glottolog,
+Eight datasets — **maths** (MSC2020, 517 fields), **languages** (Glottolog,
 415), **instruments** (Hornbostel–Sachs, 428), **animals** (TaxoQuiz's 530),
 **chess** (Lichess, 446 openings), **physics** (PhySH, 487 topics),
-**chemistry** (ChEBI, 465 chemicals). Python suite 138 tests, frontend 412,
-both green;
+**chemistry** (ChEBI, 465 chemicals), **cities** (Wikidata and Natural
+Earth, 626). Python suite 153 tests, frontend 430, both green;
 CI and Pages workflows written but **the repo has not been pushed** and has no
 GitHub remote yet. No Android build (TaxoQuiz's Capacitor setup was left out).
 
@@ -65,7 +65,8 @@ cases. Every case is a whole game state or slice, so each dataset costs about
 150KB: chess took the file past 1MB, and the counts were cut (Oct 2026) to the
 fewest that reach every rule — 9 random rounds plus the specials, the 200-node
 slice only from the top, the suggest exclusion list written once. 769KB with
-five, 1,055KB with seven: trim again if it passes about 1.2MB. The cut was checked by mutation and found an old gap: a child landing
+five, 1,055KB with seven, 1,127KB with eight: trim again if it passes about
+1.2MB. The cut was checked by mutation and found an old gap: a child landing
 *exactly* on its parent's warmth (`<=` against `<` in the floor) was reached by
 no case; the synthetic `C0`/`P`/`C` tree now reaches it.
 
@@ -186,5 +187,18 @@ no case; the synthetic `C0`/`P`/`C` tree now reaches it.
   `CHEBI_FIXES` corrects copper(II) oxide, which Wikidata files as "CU-O
   LINKAGE" — a lead for fixing Wikidata. Lost by the rule: glucose,
   penicillin, chlorophyll, which Wikidata files as classes.
+- **Cities** (`build_cities.py`, whose docstring has every decision):
+  World → continent → subregion → country → first-level region → city.
+  Continents and subregions are Natural Earth's (public domain), which
+  follow the UN geoscheme without the UN's licence; a country sits whole
+  in one continent, so Russia and Novosibirsk are Europe, Turkey Asia.
+  Cities are Wikidata's *city* subclasses **plus** any settlement or
+  municipality of ≥50k people: Madrid is only a "municipality of Spain"
+  there, and *city* alone lost 34 famous ones. A place inside another
+  chosen city (Manhattan, Hollywood) is dropped. A region is the country's
+  usual kind of first-level unit, nearest first; a city in two regions or
+  two countries (Jerusalem) sits higher. Sitelinks are noisy here: bots
+  inflate Brazilian municipalities (Osasco makes the cut, Córdoba in
+  Argentina does not).
 - **Rejected**: countries on UN M49 — the UN's terms forbid redistribution and
   derivative works.

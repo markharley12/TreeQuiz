@@ -1,0 +1,112 @@
+{
+  "order": 8,
+  "title": "Cities of the world",
+  "short_title": "Cities",
+  "prompt": "Guess the secret city by where in the world it is.",
+  "blurb": "About 600 cities, from Reykjavík to Wellington, by continent, country and region.",
+  "noun": "city",
+  "noun_plural": "cities",
+  "ladder": {
+    "levels": {
+      "continent": 1,
+      "subregion": 2,
+      "country": 3
+    },
+    "top": 5
+  },
+  "bulk_unlock": 0.5,
+  "info_source": "Wikipedia",
+  "hide_names": true,
+  "sources": [
+    {
+      "name": "Wikidata",
+      "url": "https://www.wikidata.org",
+      "licence": "CC0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "note": "The cities, chosen by how many Wikipedias cover them, with their countries and first-level regions"
+    },
+    {
+      "name": "Natural Earth",
+      "url": "https://www.naturalearthdata.com",
+      "licence": "Public domain",
+      "licence_url": "https://www.naturalearthdata.com/about/terms-of-use/",
+      "note": "Each country's continent and subregion; the subregions follow the UN's geoscheme"
+    },
+    {
+      "name": "Wikipedia",
+      "url": "https://en.wikipedia.org",
+      "licence": "CC BY-SA 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "note": "Popup text. Images are linked from Wikimedia Commons and carry their own licences"
+    }
+  ],
+  "checks": {
+    "closer": [
+      {
+        "to": "Paris",
+        "order": [
+          "Lyon",
+          "Berlin",
+          "Rome",
+          "Tokyo"
+        ]
+      },
+      {
+        "to": "Munich",
+        "order": [
+          "Nuremberg",
+          "Hamburg",
+          "Vienna",
+          "Prague",
+          "New York City"
+        ]
+      },
+      {
+        "to": "Los Angeles",
+        "order": [
+          "San Francisco",
+          "Chicago",
+          "Toronto",
+          "Mexico City",
+          "London"
+        ]
+      },
+      {
+        "to": "Mumbai",
+        "order": [
+          "Pune",
+          "Delhi",
+          "Karachi",
+          "Beijing",
+          "Cairo"
+        ]
+      },
+      {
+        "to": "Nairobi",
+        "order": [
+          "Addis Ababa",
+          "Lagos",
+          "Paris"
+        ]
+      },
+      {
+        "to": "Sydney",
+        "order": [
+          "Melbourne",
+          "Auckland",
+          "Nukuʻalofa",
+          "Tokyo"
+        ]
+      },
+      {
+        "to": "São Paulo",
+        "order": [
+          "Osasco",
+          "Rio de Janeiro",
+          "Buenos Aires",
+          "Lisbon"
+        ]
+      }
+    ]
+  }
+}

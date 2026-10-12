@@ -22,6 +22,7 @@ about it.
 | **Physics** | 487 topics | 7 | [PhySH](https://physh.org), the American Physical Society's Physics Subject Headings: research areas and physical systems under their disciplines | none |
 | **Chemistry** | 465 chemicals | 14 | [ChEBI](https://www.ebi.ac.uk/chebi/)'s classes of chemical structure; elements and compounds chosen on Wikidata by how many Wikipedias cover them | none |
 | **Chess** | 446 openings | 11 | [Lichess's opening list](https://github.com/lichess-org/chess-openings), on the tree of the openings' own moves | none |
+| **Cities** | 626 cities | 5 | [Wikidata](https://www.wikidata.org)'s cities, countries and regions; continents and subregions from [Natural Earth](https://www.naturalearthdata.com) | ladder: continent → subregion → country |
 
 Each tree was picked to test something different. Maths is shallow with clean
 ranks. Languages has no ranks at all, so warmth comes from the tree's shape
@@ -29,7 +30,9 @@ alone. Instruments is a classification whose codes *are* the tree: a violin is
 321.322-71 and a guitar 321.322-5, so they share 321.322, necked box lutes.
 Animals is TaxoQuiz's own data, and its game comes back out unchanged. Chess
 is a tree nobody drew: an opening *is* its moves, so two openings share exactly
-the moves they agree on.
+the moves they agree on. Cities is the one anybody can play, and the
+one where a ladder fits best: sharing a country is worth the same in Belgium
+as in Brazil.
 
 ![A round of Maths](docs/images/game.png)
 
@@ -242,7 +245,11 @@ popup.
 - **Chess**: the openings, their ECO codes and moves are
   [Lichess's](https://github.com/lichess-org/chess-openings) collection, in
   the public domain (CC0). The boards are drawn by the builder.
-- **Popup text** for languages, instruments, animals, physics, chemistry and chess is from English Wikipedia,
+- **Cities**: the cities, their countries and first-level regions from
+  [Wikidata](https://www.wikidata.org) (CC0), chosen by how many Wikipedias
+  cover them; each country's continent and subregion from
+  [Natural Earth](https://www.naturalearthdata.com), in the public domain.
+- **Popup text** for languages, instruments, animals, physics, chemistry, chess and cities is from English Wikipedia,
   [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/); every entry
   links its article. Images are linked from Wikimedia Commons and carry their
   own licences.

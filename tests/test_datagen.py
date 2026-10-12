@@ -1,6 +1,8 @@
 """The builders' own logic — the parts that do not need the network."""
 from __future__ import annotations
 
+import json
+
 import pytest
 
 import build_maths
@@ -465,3 +467,146 @@ def test_a_chemical_hangs_from_its_structural_class_not_its_state_or_its_use(mon
     assert "penicillin allergen" not in path(tree, "benzylpenicillin")
     assert bch.label_of("Mercury (element)") == "Mercury"
     assert bch.label_of("Poly(methyl methacrylate)") == "Poly(methyl methacrylate)"
+
+
+# --- cities --------------------------------------------------------------------
+
+import build_cities as bcy  # noqa: E402
+
+def country(name, continent, subregion, qid, iso, region_un=None):
+    return {"properties": {"NAME": name, "CONTINENT": continent, "SUBREGION": subregion, "WIKIDATAID": qid,
+                           "ISO_N3": iso, "REGION_UN": region_un or continent}}
+
+
+def test_natural_earth_gives_continent_and_subregion_and_files_open_ocean_islands_by_the_un(monkeypatch, tmp_path):
+    page = tmp_path / "countries.geojson"
+    page.write_text(json.dumps({"features": [
+        country("Burundi", "Africa", "Eastern Africa", "Q967", "108"),
+        country("Brazil", "South America", "South America", "Q155", "076"),
+        country("Maldives", "Seven seas (open ocean)", "Southern Asia", "Q826", "462", region_un="Asia"),
+        country("Mauritius", "Seven seas (open ocean)", "Seven seas (open ocean)", "Q1027", "480", region_un="Africa"),
+        country("S. Geo. and the Is.", "Seven seas (open ocean)", "South America", "Q35086", "239", region_un="Americas"),
+        country("Kosovo", "Europe", "Southern Europe", "Q1246", "-99"),
+    ]}))
+    monkeypatch.setattr(bcy, "fetch", lambda *a, **k: page)
+    regions, by_iso = bcy.natural_earth(False)
+    assert regions["Q967"] == ["Africa", "Eastern Africa"]
+    assert regions["Q155"] == ["South America"]            # no subregion but itself
+    assert regions["Q826"] == ["Asia", "Southern Asia"]
+    assert regions["Q1027"] == ["Africa"]
+    assert "Q35086" not in regions                         # no continent to give
+    assert by_iso == {"108": "Q967", "076": "Q155", "462": "Q826", "480": "Q1027"}
+
+
+def test_a_city_counts_every_first_level_unit_above_it_but_dissolved_ones():
+    graph = {"types": {"Tmetro": "metropolitan municipality in Turkey", "Tprov": "province of Turkey"},
+             "up": {"Qist": ["Qprov", "Qottoman"], "Qprov": ["Qtr"], "Qottoman": ["Qtr"], "Qtr": []},
+             "kinds": {"Qist": ["Tmetro", "Qcity"], "Qprov": ["Tprov"], "Qottoman": ["Tprov"], "Qtr": []},
+             "gone": ["Qottoman"]}
+    assert sorted(bcy.first_level("Qist", graph)) == [("Qist", "Tmetro", 0), ("Qprov", "Tprov", 1)]
+
+
+def cities_data():
+    regions = {"Qfr": ["Europe", "Western Europe"], "Qil": ["Asia", "Western Asia"],
+               "Qne-ps": ["Asia", "Western Asia"], "Qsg": ["Asia", "South-Eastern Asia"], "Qus": ["North America", "Northern America"]}
+    by_iso = {"250": "Qfr", "376": "Qil", "275": "Qne-ps", "702": "Qsg", "840": "Qus"}
+    places = {"Qfr": {"title": "France", "codes": ["250"]}, "Qil": {"title": "Israel", "codes": ["376"]},
+              "Qps": {"title": "State of Palestine", "codes": ["275"]}, "Qsg": {"title": "Singapore", "codes": ["702"]},
+              "Qus": {"title": "United States", "codes": ["840"]}, "Qold": {"title": "Kingdom of France", "codes": []},
+              "Qidf": {"title": "Île-de-France"}, "Qara": {"title": "Auvergne-Rhône-Alpes"},
+              "Qdep": {"title": "Rhône (department)"}, "Qa": {"title": "Region A"}, "Qb": {"title": "Region B"},
+              "Qny": {"title": "New York (state)"}}
+    city = lambda title, countries, **kw: {"sitelinks": 200, "pop": True, "title": title, "label": title,  # noqa: E731
+                                           "countries": countries, **kw}
+    cities = {"Qparis": city("Paris", ["Qfr", "Qold"]), "Qvers": city("Versailles", ["Qfr"]), "Qlyon": city("Lyon", ["Qfr"]),
+              "Qnice": city("Nice", ["Qfr"]), "Qsplit": city("Splitville", ["Qfr"]),
+              "Qjer": city("Jerusalem", ["Qil", "Qps"]), "Qsg": city("Singapore", ["Qsg"]),
+              "Qnyc": city("New York City", ["Qus"]), "Qbk": city("Brooklyn", ["Qus"]), "Qbuf": city("Buffalo", ["Qus"]),
+              "Qtroy": city("Troy", ["Qold"], pop=False), "Qsmall": city("Hamlet", ["Qfr"], sitelinks=10)}
+    graph = {"types": {"Treg": "region of France", "Tdep": "department of France", "Tst": "U.S. state"},
+             "up": {"Qparis": ["Qidf"], "Qvers": ["Qidf"], "Qlyon": ["Qdep"], "Qdep": ["Qara"], "Qnice": ["Qa"],
+                    "Qsplit": ["Qa", "Qb"], "Qnyc": ["Qny"], "Qbk": ["Qnyc"], "Qbuf": ["Qny"]},
+             "kinds": {"Qidf": ["Treg"], "Qara": ["Treg"], "Qdep": ["Tdep"], "Qa": ["Treg"], "Qb": ["Treg"], "Qny": ["Tst"]},
+             "gone": []}
+    return {"cities": cities, "places": places, "graph": graph, "aliases": {}}, regions, by_iso
+
+
+def test_cities_are_placed_by_country_and_their_countrys_usual_kind_of_region(monkeypatch):
+    monkeypatch.setattr(bcy, "NOT_REGION", set())
+    data, regions, by_iso = cities_data()
+    chosen = {it["title"]: it for it in bcy.choose(data, regions, by_iso, 100)}
+    assert set(chosen) == {"Paris", "Versailles", "Lyon", "Nice", "Splitville", "Jerusalem", "Singapore",
+                           "New York City", "Buffalo"}
+    assert chosen["Paris"]["country"] == "Qfr" and chosen["Paris"]["region"] == "Qidf"   # the kingdom is history
+    assert chosen["Lyon"]["region"] == "Qara"          # regions outnumber departments in France
+    assert chosen["Splitville"]["region"] is None      # in two regions at once: filed under the country
+    assert chosen["Jerusalem"]["country"] is None and chosen["Jerusalem"]["chain"] == ["Asia", "Western Asia"]
+    assert chosen["Singapore"]["city_state"] and chosen["Singapore"]["country"] is None
+
+
+def test_a_place_inside_another_chosen_city_is_part_of_it_not_a_city(monkeypatch):
+    monkeypatch.setattr(bcy, "NOT_REGION", set())
+    data, regions, by_iso = cities_data()
+    titles = {it["title"] for it in bcy.choose(data, regions, by_iso, 100)}
+    assert "Brooklyn" not in titles and "New York City" in titles
+    assert bcy.above("Qbk", data["graph"]) == {"Qnyc", "Qny"}
+
+
+def test_a_country_off_natural_earths_map_stops_the_build(monkeypatch):
+    monkeypatch.setattr(bcy, "NOT_REGION", set())
+    data, regions, by_iso = cities_data()
+    data["cities"]["Qatl"] = {"sitelinks": 200, "pop": True, "title": "Atlantis", "label": "Atlantis", "countries": ["Qsea"]}
+    with pytest.raises(SystemExit, match="Atlantis"):
+        bcy.choose(data, regions, by_iso, 100)
+
+
+def test_the_tree_runs_continent_subregion_country_region_city(monkeypatch):
+    monkeypatch.setattr(bcy, "NOT_REGION", set())
+    data, regions, by_iso = cities_data()
+    tree, titles = bcy.build(data, regions, by_iso, 100)
+
+    def find(n, name, above=()):
+        if n["name"] == name:
+            return n, list(above)
+        for c in n.get("children") or []:
+            if (hit := find(c, name, (*above, n.get("label", n["name"])))) is not None:
+                return hit
+        return None
+
+    paris, above = find(tree, "Paris")
+    assert above == ["World", "Europe", "Western Europe", "France", "Île-de-France"]
+    assert find(tree, "France")[0]["rank"] == "Country" and find(tree, "Western Europe")[0]["rank"] == "Subregion"
+    assert find(tree, "Jerusalem")[1] == ["World", "Asia", "Western Asia"]
+    sg, above = find(tree, "Singapore")
+    assert sg["rank"] == "City-state" and above == ["World", "Asia", "South-Eastern Asia"]
+    assert find(tree, "Region A") is None              # Nice alone in it, so spliced out
+    assert find(tree, "New York (state)")[0]["label"] == "New York"
+    assert titles["Western Asia"] == "West Asia"       # the popup reads the article
+
+
+def test_a_city_label_drops_what_its_lineage_says_unless_two_cities_would_share_it():
+    places = {"Qus": {"title": "United States"}, "Qor": {"title": "Oregon"}, "Qal": {"title": "Alabama"},
+              "Quk": {"title": "United Kingdom"}}
+    chosen = [{"title": "Portland, Oregon", "country": "Qus", "region": "Qor"},
+              {"title": "Birmingham", "country": "Quk", "region": None},
+              {"title": "Birmingham, Alabama", "country": "Qus", "region": "Qal"},
+              {"title": "Washington, D.C.", "country": "Qus", "region": None}]
+    bcy.city_labels(chosen, places)
+    assert [c["label"] for c in chosen] == ["Portland", "Birmingham", "Birmingham, Alabama", "Washington, D.C."]
+
+
+def test_aliases_another_city_answers_to_are_dropped():
+    chosen = [{"qid": "Q1", "label": "Mumbai", "title": "Mumbai"}, {"qid": "Q2", "label": "Saint Petersburg", "title": "Saint Petersburg"},
+              {"qid": "Q3", "label": "Petersburg", "title": "Petersburg, Virginia"}]
+    aliases = {"Q1": ["Bombay", "Mumbai"], "Q2": ["Petersburg", "St. Petersburg", "Leningrad"], "Q3": ["Leningrad"]}
+    bcy.city_aliases(chosen, aliases, {})
+    assert chosen[0]["aliases"] == ["Bombay"]
+    assert chosen[1]["aliases"] == ["St. Petersburg"]          # Petersburg is a city; Leningrad is claimed twice
+    assert chosen[2]["aliases"] == ["Petersburg, Virginia"]
+
+
+@pytest.mark.parametrize("label,rank", [("federal subject of Russia", "Federal subject"), ("U.S. state", "State"),
+                                        ("constituent country of the United Kingdom", "Constituent country"),
+                                        ("metropolitan municipality in Turkey", "Metropolitan municipality")])
+def test_a_region_type_becomes_a_short_rank(label, rank):
+    assert bcy.type_rank(label) == rank

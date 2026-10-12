@@ -15,6 +15,7 @@ the source again.
 | `build_physics.py` | `datasets/physics` | PhySH (CC0), pinned to a commit; fame from Wikipedia titles and Wikidata sitelinks |
 | `build_chemistry.py` | `datasets/chemistry` | ChEBI's ontology (CC BY 4.0), release pinned; chemicals from Wikidata's ChEBI IDs and sitelinks |
 | `build_chess.py` | `datasets/chess` | Lichess's opening list (CC0), pinned to a commit; Wikipedia's leads where an opening has an article |
+| `build_cities.py` | `datasets/cities` | Wikidata's cities, countries and first-level regions (CC0); Natural Earth's continents and subregions (public domain), pinned to a release |
 
 `san.py` replays chess moves for `build_chess.py`, which draws each position
 as an SVG board. It is checked against python-chess once rather than depending
