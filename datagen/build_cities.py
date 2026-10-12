@@ -82,13 +82,13 @@ import argparse
 import collections
 import json
 import re
-import time
 import unicodedata
-import urllib.error
-import urllib.parse
-import urllib.request
 
-from common import CACHE, USER_AGENT, collapse_lone_children, fetch, node, write_dataset
+from common import CACHE, collapse_lone_children, fetch, node, write_dataset
+from wikidata import batched as _batched
+from wikidata import qid as _qid
+from wikidata import sparql as _sparql
+from wikidata import title as _title
 from wikipedia import info_entry, summaries
 
 MIN_SITELINKS = 120
@@ -102,7 +102,6 @@ ARTICLES = {
     "Western Africa": "West Africa", "Eastern Asia": "East Asia", "South-Eastern Asia": "Southeast Asia",
     "Southern Asia": "South Asia", "Western Asia": "West Asia", "Australia and New Zealand": "Australasia",
 }
-BATCH = 200
 
 POP_FLOOR = 50000     # for places that are settlements but not typed as cities
 SMALL_TOWN = 20000    # below which a city must be a capital
@@ -151,38 +150,6 @@ ALIASES = """SELECT ?c ?alt WHERE {
   VALUES ?c { %s }
   ?c skos:altLabel ?alt FILTER(lang(?alt) = "en")
 }"""
-
-
-def _sparql(query: str, retries: int = 4) -> list[dict]:
-    url = "https://query.wikidata.org/sparql?" + urllib.parse.urlencode({"query": query})
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "application/sparql-results+json"})
-    for attempt in range(retries):
-        try:
-            with urllib.request.urlopen(req, timeout=300) as resp:
-                return json.load(resp)["results"]["bindings"]
-        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError):
-            if attempt == retries - 1:
-                raise
-            time.sleep(5 * 2 ** attempt)
-    raise AssertionError("unreachable")
-
-
-def _qid(b: dict, key: str) -> str | None:
-    v = b.get(key, {}).get("value")
-    return v.rsplit("/", 1)[1] if v else None
-
-
-def _title(b: dict) -> str | None:
-    v = b.get("enwiki", {}).get("value")
-    return urllib.parse.unquote(v.rsplit("/wiki/", 1)[1]).replace("_", " ") if v else None
-
-
-def _batched(query: str, qids: list[str]) -> list[dict]:
-    rows = []
-    for i in range(0, len(qids), BATCH):
-        rows += _sparql(query % " ".join(f"wd:{q}" for q in qids[i:i + BATCH]))
-        time.sleep(1)
-    return rows
 
 
 def wikidata(refresh: bool) -> dict:
