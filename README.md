@@ -23,6 +23,7 @@ about it.
 | **Chemistry** | 465 chemicals | 14 | [ChEBI](https://www.ebi.ac.uk/chebi/)'s classes of chemical structure; elements and compounds chosen on Wikidata by how many Wikipedias cover them | none |
 | **Chess** | 446 openings | 11 | [Lichess's opening list](https://github.com/lichess-org/chess-openings), on the tree of the openings' own moves | none |
 | **Cities** | 622 cities | 5 | [Wikidata](https://www.wikidata.org)'s cities, countries and regions; continents and subregions from [Natural Earth](https://www.naturalearthdata.com) | ladder: continent → subregion → country |
+| **Plants** | 469 plants | 16 | [Wikidata](https://www.wikidata.org)'s taxonomy (parent taxon, P171), species and genera chosen by how many Wikipedias cover them | the Linnaean ladder |
 
 Each tree was picked to test something different. Maths is shallow with clean
 ranks. Languages has no ranks at all, so warmth comes from the tree's shape
@@ -32,7 +33,9 @@ Animals is TaxoQuiz's own data, and its game comes back out unchanged. Chess
 is a tree nobody drew: an opening *is* its moves, so two openings share exactly
 the moves they agree on. Cities is the one anybody can play, and the
 one where a ladder fits best: sharing a country is worth the same in Belgium
-as in Brazil.
+as in Brazil. Plants asks the animals' question of a crowd-sourced taxonomy
+instead of a curated one, where an old classification often sits beside the
+new and the builder has to choose.
 
 ![A round of Maths](docs/images/game.png)
 
@@ -275,7 +278,12 @@ popup.
   [Wikidata](https://www.wikidata.org) (CC0), chosen by how many Wikipedias
   cover them; each country's continent and subregion from
   [Natural Earth](https://www.naturalearthdata.com), in the public domain.
-- **Popup text** for languages, instruments, animals, physics, chemistry, chess and cities is from English Wikipedia,
+- **Plants**: the plants and their classification from
+  [Wikidata](https://www.wikidata.org) (CC0), chosen by how many Wikipedias
+  cover them. Where Wikidata gives a taxon two parents TreeQuiz chose one,
+  fifteen placements are corrected by hand, and English names come from
+  Wikipedia's titles, Wikidata, or by hand.
+- **Popup text** for languages, instruments, animals, physics, chemistry, chess, cities and plants is from English Wikipedia,
   [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/); every entry
   links its article. Images are linked from Wikimedia Commons and carry their
   own licences.

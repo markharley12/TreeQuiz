@@ -81,6 +81,17 @@ def test_lone_children_are_spliced_out_but_not_the_root_or_kept_ones():
     assert out["children"][1]["children"] == [{"name": "only"}]
 
 
+def test_a_run_of_lone_children_can_be_shown_by_its_best_known_group():
+    tree = n("root", None,
+             n("Faboideae", "Subfamily", n("Meso", None, n("NPAA", None, n("a"), n("b")))),
+             n("solo", None, n("leaf")))
+    fame = {"Faboideae": 55, "Meso": 1, "NPAA": 4, "leaf": 0, "solo": 99}
+    out = collapse_lone_children(tree, prefer=lambda m: fame[m["name"]])
+    group, leaf = out["children"]
+    assert (group["name"], group["rank"], [c["name"] for c in group["children"]]) == ("Faboideae", "Subfamily", ["a", "b"])
+    assert leaf == {"name": "leaf"}       # a leaf is never stood for by its group
+
+
 @pytest.mark.parametrize("tex,plain", [
     (r"\(K\)-theory", "K-theory"),
     (r"Grothendieck groups and \(K_0\)", "Grothendieck groups and K₀"),
@@ -623,3 +634,111 @@ def test_aliases_another_city_answers_to_are_dropped():
                                         ("metropolitan municipality in Turkey", "Metropolitan municipality")])
 def test_a_region_type_becomes_a_short_rank(label, rank):
     assert bcy.type_rank(label) == rank
+
+
+# --- plants ------------------------------------------------------------------
+
+import build_plants as bpl  # noqa: E402
+
+
+def plants_data():
+    def taxon(up, name=None, rank=None, sitelinks=10, title=None, label=None):
+        return {"up": up, "names": [name] if name else [], "rank": rank, "sitelinks": sitelinks,
+                "title": title, "label": label or name}
+    taxa = {
+        "Q756": taxon([], "Plantae", "Qkingdom", 268, "Plant"),
+        "Qang": taxon(["Q756"], None, None, 135, "Flowering plant", "Angiosperms"),
+        "Qmoss": taxon(["Q756"], "Sphagnum", "Qgenus", 59, "Sphagnum"),
+        "Qros": taxon(["Qang"], "Rosaceae", "Qfamily", 100, "Rosaceae"),
+        "Qamy": taxon(["Qros"], "Amygdaloideae", "Qsubfamily", 18),
+        "Qmaloid": taxon(["Qros"], "Maloideae", "Qsubfamily", 30),
+        "Qmalus": taxon(["Qmaloid"], "Malus", "Qgenus", 100, "Malus", "Malus"),
+        "Qpyrus": taxon(["Qros", "Qamy"], "Pyrus", "Qgenus", 151, "Pear"),
+        "Qprunus": taxon(["Qamy"], "Prunus", "Qgenus", 86, "Prunus"),
+        "Qpeach": taxon(["Qprunus"], "Prunus persica", "Qspecies", 160, "Peach"),
+        "Qplum": taxon(["Qprunus"], "Prunus domestica", "Qspecies", 96, "Prunus domestica"),
+        "Qfag": taxon(["Qang"], "Fagaceae", "Qfamily", 70, "Fagaceae"),
+        "Qoak": taxon(["Qfag"], "Quercus", "Qgenus", 159, "Oak"),
+        "Qrobur": taxon(["Qoak"], "Quercus robur", "Qspecies", 86, "Quercus robur"),
+        "Qmag": taxon(["Qang"], "Magnolia", "Qgenus", 92, "Magnolia"),
+        "Qbasil": taxon(["Qang"], "Ocimum basilicum", "Qspecies", 122, "Ocimum basilicum", "basil"),
+        "Qolive": taxon(["Qang"], "Olea europaea", "Qspecies", 145, "Olea europaea"),
+        "Qkum": taxon(["Qang"], "citrus fruit", "Qgenus", 67, "Kumquat", "cumquat"),
+        "Qloop": taxon(["Qloop2"], "Loopus", "Qgenus", 99, "Loop"),
+        "Qloop2": taxon(["Qloop"], "Loopaceae", "Qfamily", 5),
+    }
+    candidates = {q: t["sitelinks"] for q, t in taxa.items() if t["rank"] in ("Qgenus", "Qspecies")}
+    common = {"Qmalus": ["apple"], "Qmag": ["magnolia"], "Qmoss": ["sphagnum"], "Qolive": ["olive", "olive tree"], "Qplum": ["European Plum"],
+              "Qrobur": ["Pedunculate Oak"]}
+    ranks = {"Qkingdom": "kingdom", "Qfamily": "family", "Qsubfamily": "subfamily", "Qgenus": "genus", "Qspecies": "species"}
+    return {"candidates": candidates, "taxa": taxa, "common": common, "ranks": ranks,
+            "taxon_names": ["Malus", "Ocimum basilicum", "Olea europaea", "Prunus domestica", "Quercus robur", "Sphagnum"]}
+
+
+def plant(tree, name):
+    if tree["name"] == name:
+        return tree
+    return next((hit for c in tree.get("children") or [] if (hit := plant(c, name))), None)
+
+
+@pytest.fixture
+def no_plant_fixes(monkeypatch):
+    monkeypatch.setattr(bpl, "PARENTS", {})
+    monkeypatch.setattr(bpl, "LABELS", {})
+
+
+def test_a_parent_is_the_best_known_unless_another_parent_lies_inside_it(no_plant_fixes):
+    data = plants_data()
+    parent = bpl.parents(data["taxa"])
+    assert parent["Qpyrus"] == "Qamy"         # Rosaceae is better known, but Amygdaloideae is inside it
+    assert "Qloop" not in parent              # a loop never reaches Plantae
+
+
+def test_a_parent_by_hand_wins_and_must_be_a_plant(monkeypatch):
+    monkeypatch.setattr(bpl, "PARENTS", {"Malus": "Amygdaloideae"})
+    assert bpl.parents(plants_data()["taxa"])["Qmalus"] == "Qamy"
+    monkeypatch.setattr(bpl, "PARENTS", {"Malus": "Nowhereaceae"})
+    with pytest.raises(SystemExit, match="Nowhereaceae"):
+        bpl.parents(plants_data()["taxa"])
+
+
+def test_a_genus_is_a_plant_only_when_better_known_than_its_species(no_plant_fixes):
+    data = plants_data()
+    names = {data["taxa"][q]["names"][0] for q in bpl.choose(data, bpl.parents(data["taxa"]), 50)}
+    assert "Quercus" in names and "Quercus robur" not in names     # the oak, not one oak
+    assert "Prunus" not in names and {"Prunus persica", "Prunus domestica"} <= names
+    assert "citrus fruit" not in names        # Wikidata's kumquat has no Latin name
+    assert "Loopus" not in names
+
+
+@pytest.mark.parametrize("qid,label,how", [
+    ("Qpyrus", "Pear", "title"),
+    ("Qbasil", "basil", "label"),             # capitalised when the tree is built
+    ("Qmag", "Magnolia", "used in English"),
+    ("Qplum", "European plum", "common name"),   # its title is the Latin; Title Case is lowered
+    ("Qolive", None, "none"),                 # two common names and a Latin title: by hand
+])
+def test_a_label_is_the_title_the_label_the_latin_used_in_english_or_the_one_common_name(no_plant_fixes, qid, label, how):
+    assert bpl.leaf_label(qid, plants_data()) == (label, how)
+
+
+def test_a_plant_the_rules_cannot_name_stops_the_build_until_labelled(no_plant_fixes, monkeypatch):
+    with pytest.raises(SystemExit, match="Olea europaea"):
+        bpl.build(plants_data(), 50)
+    monkeypatch.setattr(bpl, "LABELS", {"Olea europaea": "Olive"})
+    tree, titles = bpl.build(plants_data(), 50)
+    assert plant(tree, "Olea europaea")["label"] == "Olive"
+    assert plant(tree, "Ocimum basilicum")["label"] == "Basil"
+    assert plant(tree, "Prunus domestica")["aliases"] == ["Prunus domestica"]
+    assert titles["Pyrus"] == "Pear"
+
+
+def test_the_tree_splices_runs_of_one_child_and_keeps_the_best_known(no_plant_fixes, monkeypatch):
+    monkeypatch.setattr(bpl, "LABELS", {"Olea europaea": "Olive"})
+    tree, _ = bpl.build(plants_data(), 50)
+    assert [c["name"] for c in tree["children"]] == ["Angiosperms", "Sphagnum"]
+    rosaceae = plant(tree, "Rosaceae")
+    # Malus alone under Maloideae is spliced; Prunus alone under Amygdaloideae
+    # with the pear is not.
+    assert sorted(c["name"] for c in rosaceae["children"]) == ["Amygdaloideae", "Malus"]
+    assert plant(tree, "Fagaceae") is None and plant(tree, "Quercus")["label"] == "Oak"   # one oak: the family is it

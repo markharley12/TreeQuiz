@@ -11,12 +11,12 @@ unchanged, and this file covers what is new.
 
 ## Status
 
-Eight datasets — **maths** (MSC2020, 517 fields), **languages** (Glottolog,
+Nine datasets — **maths** (MSC2020, 517 fields), **languages** (Glottolog,
 415), **instruments** (Hornbostel–Sachs, 428), **animals** (TaxoQuiz's 530),
 **chess** (Lichess, 446 openings), **physics** (PhySH, 487 topics),
 **chemistry** (ChEBI, 465 chemicals), **cities** (Wikidata and Natural
-Earth, 622). Two games: the guessing round and odd one out. Python suite
-176 tests, frontend 475, both green;
+Earth, 622), **plants** (Wikidata's taxonomy, 469). Two games: the guessing
+round and odd one out. Python suite 193 tests, frontend 501, both green;
 CI and Pages workflows written but **the repo has not been pushed** and has no
 GitHub remote yet. No Android build (TaxoQuiz's Capacitor setup was left out).
 
@@ -66,8 +66,12 @@ cases. Every case is a whole game state or slice, so each dataset costs about
 150KB: chess took the file past 1MB, and the counts were cut (Oct 2026) to the
 fewest that reach every rule — 9 random rounds plus the specials, the 200-node
 slice only from the top, the suggest exclusion list written once. 769KB with
-five, 1,055KB with seven, 1,127KB with eight: trim again if it passes about
-1.2MB. The cut was checked by mutation and found an old gap: a child landing
+five, 1,055KB with seven, 1,127KB with eight, 1,293KB with nine — so it was
+cut again: the depth-two subtree from the top (the depth-one case there still
+runs the limit) and one of two random lineages per tree, to 1,175KB. Checked
+with vitest's coverage of `src/engine/` from the conformance test alone,
+before and after: no line, branch or function lost its case. Trim again past
+about 1.2MB, the same way. The cut was checked by mutation and found an old gap: a child landing
 *exactly* on its parent's warmth (`<=` against `<` in the floor) was reached by
 no case; the synthetic `C0`/`P`/`C` tree now reaches it.
 
@@ -235,5 +239,20 @@ score, not an outcome.
   two countries (Jerusalem) sits higher. Sitelinks are noisy here: bots
   inflate Brazilian municipalities (Osasco makes the cut, Córdoba in
   Argentina does not).
+- **Plants** (`build_plants.py`, whose docstring has every decision):
+  Wikidata species and genera under *Plantae* at ≥55 sitelinks, found on
+  QLever (WDQS times out walking a million taxa), parents walked up on
+  WDQS. A taxon is a leaf when it is better known than everything chosen
+  below it, so the oak is a leaf and *Citrus* a group. Parents: the best
+  known, unless another parent lies inside it, plus `PARENTS` — fifteen
+  hand corrections, since Wikidata keeps old classifications beside new
+  ones and "deepest parent" (physics' rule) followed them: it filed the
+  flowering plants under a gymnosperm superdivision, and Ruscus sits under
+  Solanaceae's Nolanoideae for Asparagaceae's Nolinoideae. Labels are
+  English by rule (title, label, the Latin used in English, the one
+  common name) or `LABELS`, and the build fails on a plant with none; 179
+  are by hand. A run of pass-throughs is shown by its best-known member
+  (`collapse_lone_children(prefer=)`), or *Faboideae* became
+  *Meso-Papilionoideae*.
 - **Rejected**: countries on UN M49 — the UN's terms forbid redistribution and
   derivative works.

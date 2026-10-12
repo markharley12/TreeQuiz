@@ -11,9 +11,16 @@ Two endpoints:
   plant, for instance. QLever answers it in about two seconds. Its copy of
   Wikidata is a few days old, which a build cached on disk does not mind.
 
-QLever's dialect differs in small ways: a variable named `?label` came back
-empty where `?l` did not, and a VALUES clause beside a property path
-returned nothing. Keep its queries plain.
+QLever's dialect differs in small ways, and each fails silently, with no
+rows rather than an error: a variable named `?label` came back empty where
+`?l` did not; a VALUES clause beside a property path returned nothing; and
+a sitelink count compared as it stands (`FILTER(?sl >= 60)`) matched
+nothing at all from Oct 2026, where `xsd:integer(?sl) >= 60` matches.
+Keep its queries plain, and check a count against a known item.
+
+Wikidata's endpoint has its own: strings in a VALUES clause (taxon names, to
+look up) match nothing, typed or not, where the same string written into
+the triple matches. QLever matches them.
 """
 from __future__ import annotations
 
@@ -35,6 +42,7 @@ PREFIX wikibase: <http://wikiba.se/ontology#>
 PREFIX schema: <http://schema.org/>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 """
 
 
@@ -73,10 +81,13 @@ def title(b: dict, key: str = "enwiki") -> str | None:
     return urllib.parse.unquote(v.rsplit("/wiki/", 1)[1]).replace("_", " ") if v else None
 
 
-def batched(query: str, qids: list[str]) -> list[dict]:
-    """`query`'s `%s` filled with `BATCH` items at a time; every row."""
+def batched(query: str, qids: list[str], *, literal: bool = False, endpoint: str = WDQS) -> list[dict]:
+    """`query`'s `%s` filled with `BATCH` items at a time; every row. With
+    `literal`, the values are strings, not QIDs — send those to QLever."""
+    def term(v: str) -> str:
+        return json.dumps(v, ensure_ascii=False) if literal else f"wd:{v}"
     rows = []
     for i in range(0, len(qids), BATCH):
-        rows += sparql(query % " ".join(f"wd:{q}" for q in qids[i:i + BATCH]))
+        rows += sparql(query % " ".join(term(v) for v in qids[i:i + BATCH]), endpoint=endpoint)
         time.sleep(1)
     return rows

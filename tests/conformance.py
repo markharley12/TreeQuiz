@@ -172,8 +172,11 @@ def dataset_cases(ds: dataset.Dataset, rng: random.Random) -> dict:
     roots = [None, *rng.sample(internal, 4), lv[5]["name"], "No such node"]
     subtrees = []
     for root in roots:
-        # The large budget only from the top, where it is the app's first screen.
-        shapes = ((None, 200), (None, 40), (2, None), (1, 7)) if root is None else ((None, 40), (2, None), (1, 7))
+        # The large budget only from the top, where it is the app's first
+        # screen; a depth of two only from below it, which is half the size
+        # (cut with the lineages below, at nine trees: the depth-one case
+        # from the top still runs the depth limit there).
+        shapes = ((None, 200), (None, 40), (1, 7)) if root is None else ((None, 40), (2, None), (1, 7))
         for depth, budget in shapes:
             subtrees.append({"root": root, "depth": depth, "budget": budget,
                              **attempt(explore.subtree, ds, root, depth, budget)})
@@ -200,7 +203,7 @@ def dataset_cases(ds: dataset.Dataset, rng: random.Random) -> dict:
         "explore": {
             "subtree": subtrees,
             "lineage": [{"name": x, **attempt(explore.lineage, ds, x)}
-                        for x in [*rng.sample(names, 2), "No such node"]],
+                        for x in [rng.choice(names), "No such node"]],
             "search": [{"q": q, "limit": lim, "result": explore.search(ds, q, lim)}
                        for q in [*rng.sample(words, 6), "a", " e ", ""] for lim in (25, 3)],
             "stats": explore.stats(ds),

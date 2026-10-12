@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import sys
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -62,16 +63,26 @@ def node(name: str, rank: str | None = None, label: str | None = None,
     return out
 
 
-def collapse_lone_children(tree: dict, keep: set[str] = frozenset()) -> dict:
+def collapse_lone_children(tree: dict, keep: set[str] = frozenset(),
+                           prefer: Callable[[dict], float] | None = None) -> dict:
     """Splice out internal nodes with exactly one child, except the root and
     any named in `keep`. A pass-through is never anyone's LCA and is joined
     onto its child on screen anyway, so it costs a name to read and adds no
-    information; TaxoQuiz's clade layer left out Parahoxozoa for this reason."""
+    information; TaxoQuiz's clade layer left out Parahoxozoa for this reason.
+
+    A run of pass-throughs and the group below them hold the same leaves, so
+    any one of them can stand for the rest. By default the lowest does;
+    with `prefer`, the group that scores highest (the first, on a tie). A
+    leaf always stands for itself."""
     def fix(n: dict, is_root: bool) -> dict:
+        run = [n]
         kids = n.get("children") or []
-        while len(kids) == 1 and not is_root and n["name"] not in keep:
-            n = kids[0]
-            kids = n.get("children") or []
+        while len(kids) == 1 and not is_root and run[-1]["name"] not in keep:
+            run.append(kids[0])
+            kids = kids[0].get("children") or []
+        n = run[-1]
+        if kids and prefer and len(run) > 1:
+            n = {**max(run, key=prefer), "children": kids}
         if kids:
             n = {**n, "children": [fix(c, False) for c in kids]}
         return n

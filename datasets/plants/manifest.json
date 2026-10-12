@@ -1,0 +1,136 @@
+{
+  "order": 9,
+  "title": "Plants",
+  "short_title": "Plants",
+  "prompt": "Guess the secret plant by its place in the tree of life.",
+  "blurb": "About 500 well-known plants, from mosses to maize, on Wikidata's taxonomy.",
+  "noun": "plant",
+  "noun_plural": "plants",
+  "ladder": {
+    "levels": {
+      "kingdom": 0.0,
+      "subkingdom": 0.3,
+      "infrakingdom": 0.5,
+      "superdivision": 0.8,
+      "superphylum": 0.8,
+      "division": 1.0,
+      "phylum": 1.0,
+      "subdivision": 1.3,
+      "subphylum": 1.3,
+      "superclass": 1.85,
+      "class": 2.0,
+      "subclass": 2.3,
+      "superorder": 2.95,
+      "order": 3.0,
+      "suborder": 3.3,
+      "superfamily": 3.9,
+      "family": 4.0,
+      "subfamily": 4.3,
+      "supertribe": 4.45,
+      "tribe": 4.5,
+      "subtribe": 4.6,
+      "genus": 5.0,
+      "subgenus": 5.3,
+      "section": 5.5,
+      "subsection": 5.6,
+      "series": 5.65,
+      "species": 6.0,
+      "nothospecies": 6.0
+    },
+    "top": 6.0
+  },
+  "bulk_unlock": 0.5,
+  "info_source": "Wikipedia",
+  "sources": [
+    {
+      "name": "Wikidata",
+      "url": "https://www.wikidata.org",
+      "licence": "CC0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "note": "The plants, chosen by how many Wikipedias cover them, and their parent taxa"
+    },
+    {
+      "name": "Wikipedia",
+      "url": "https://en.wikipedia.org",
+      "licence": "CC BY-SA 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "note": "Popup text; images are linked from Wikimedia Commons and carry their own licences"
+    }
+  ],
+  "checks": {
+    "closer": [
+      {
+        "to": "Solanum lycopersicum",
+        "order": [
+          "Solanum tuberosum",
+          "Nicotiana tabacum",
+          "Ipomoea batatas",
+          "Coffea",
+          "Lactuca sativa",
+          "Rosa",
+          "Zea mays",
+          "Pinus",
+          "Sphagnum"
+        ]
+      },
+      {
+        "to": "Pyrus",
+        "order": [
+          "Malus",
+          "Prunus persica",
+          "Rosa",
+          "Ficus carica",
+          "Quercus",
+          "Brassica oleracea",
+          "Solanum lycopersicum",
+          "Allium cepa"
+        ]
+      },
+      {
+        "to": "Quercus",
+        "order": [
+          "Fagus",
+          "Betula",
+          "Rosa",
+          "Acer",
+          "Helianthus annuus",
+          "Pinus"
+        ]
+      },
+      {
+        "to": "Triticum aestivum",
+        "order": [
+          "Triticum spelta",
+          "Hordeum vulgare",
+          "Avena sativa",
+          "Zea mays",
+          "Ananas comosus",
+          "Musa",
+          "Allium cepa",
+          "Solanum lycopersicum"
+        ]
+      },
+      {
+        "to": "Pinus",
+        "order": [
+          "Picea",
+          "Juniperus",
+          "Ginkgo biloba",
+          "Quercus",
+          "Dryopteris filix-mas",
+          "Sphagnum"
+        ]
+      },
+      {
+        "to": "Allium cepa",
+        "order": [
+          "Allium sativum",
+          "Narcissus",
+          "Asparagus officinalis",
+          "Zea mays",
+          "Solanum lycopersicum"
+        ]
+      }
+    ]
+  }
+}
