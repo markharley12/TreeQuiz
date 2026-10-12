@@ -13,8 +13,10 @@ import type { ExploreNode } from '../api'
 const fetchSuggestions = vi.fn()
 const fetchExplore = vi.fn()
 const fetchMatchedAliases = vi.fn()
+const suggestionsNow = vi.fn()
 
 vi.mock('../api', () => ({
+  suggestionsNow: (...a: unknown[]) => suggestionsNow(...a),
   fetchSuggestions: (...a: unknown[]) => fetchSuggestions(...a),
   fetchExplore: (...a: unknown[]) => fetchExplore(...a),
   fetchMatchedAliases: (...a: unknown[]) => fetchMatchedAliases(...a),
@@ -49,6 +51,7 @@ beforeEach(() => {
   fetchSuggestions.mockResolvedValue(['leopard', 'snow leopard'])
   fetchExplore.mockResolvedValue(PANTHERA)
   fetchMatchedAliases.mockResolvedValue(new Map())
+  suggestionsNow.mockReturnValue(null)
 })
 
 afterEach(cleanup)
@@ -131,5 +134,30 @@ describe('a suggestion found by an alias', () => {
     fireEvent.click(jaguar)
     fireEvent.click(screen.getByRole('button', { name: 'Guess' }))
     expect(onGuess).toHaveBeenCalledWith('jaguar')
+  })
+})
+
+describe('the highlighted suggestion', () => {
+  it('is the best match for what is typed now, not the one that led a keystroke ago', async () => {
+    // "ros" puts the guelder rose first; "rose" puts the rose first. MUI keeps
+    // its highlight on an option that survives into a new list for the same
+    // text, so a list arriving a render after its text left Enter on the
+    // guelder rose. The engine answers either way.
+    const lists: Record<string, string[]> = {
+      ros: ['guelder rose', 'rosemary', 'rosary pea', 'rose', 'primrose'],
+      rose: ['rose', 'guelder rose', 'rosemary', 'primrose'],
+    }
+    fetchSuggestions.mockImplementation(async (_d: string, q: string) => lists[q] ?? [])
+    suggestionsNow.mockImplementation((_d: string, q: string) => ({ labels: lists[q] ?? [], aliases: new Map() }))
+    const { input, onGuess } = await renderInput({ bulk: null })
+
+    fireEvent.change(input, { target: { value: 'ros' } })
+    await screen.findByText('Guelder rose')
+    fireEvent.change(input, { target: { value: 'rose' } })
+    await waitFor(() => expect(screen.getAllByRole('option')[0].textContent).toBe('Rose'))
+
+    fireEvent.keyDown(input, { key: 'Enter' })
+    fireEvent.click(screen.getByRole('button', { name: 'Guess' }))
+    expect(onGuess).toHaveBeenCalledWith('rose')
   })
 })

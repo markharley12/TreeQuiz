@@ -82,6 +82,11 @@ export async function loadDataset(id: string): Promise<Dataset> {
   return ds
 }
 
+/** The dataset if `loadDataset` has already built it, without waiting. */
+export function loadedDataset(id: string): Dataset | undefined {
+  return built.get(id)
+}
+
 export async function loadInfo(id: string): Promise<Record<string, StoredInfo>> {
   const url = infos.get(id)
   return url ? fetchInfo(url) : {}

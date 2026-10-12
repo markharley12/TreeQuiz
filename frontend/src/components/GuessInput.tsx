@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { Autocomplete, TextField, Button, Box, ButtonBase, Paper, type PaperProps } from '@mui/material'
-import { fetchExplore, fetchMatchedAliases, fetchSuggestions, type ExploreNode } from '../api'
+import { fetchExplore, fetchMatchedAliases, fetchSuggestions, suggestionsNow, type ExploreNode } from '../api'
 import { useSettings } from '../settings'
 import { displayName } from '../names'
 import { withArticle } from '../words'
@@ -60,6 +60,9 @@ export default function GuessInput({ onGuess, onBulkGuess, bulk, disabled, exclu
   // The leaves under a group, fetched once per group rather than per keystroke.
   // A group can run to a few thousand names; the cap applies after.
   const groups = useRef(new Map<string, Promise<string[]>>())
+  // What was last typed, so an answer that comes back late for an earlier
+  // keystroke is dropped.
+  const latest = useRef('')
 
   function namesUnder(group: string): Promise<string[]> {
     const key = `${dataset}\u0000${group}`
@@ -79,13 +82,28 @@ export default function GuessInput({ onGuess, onBulkGuess, bulk, disabled, exclu
     if (reason !== 'input') return
     setChosen(null)
     const query = newInput.trim()
+    latest.current = query
     if (query.length < 2) {
       setOptions([])
       setOffer(null)
       return
     }
-    const results = await fetchSuggestions(dataset, query, SUGGESTIONS, exclude)
-    const aliases = await fetchMatchedAliases(dataset, query, results)
+    // The list changes in the same render as the text when it can. MUI keeps
+    // its highlight on an option that is still there when the list changes
+    // under the same text, so a list one render late kept whatever led the
+    // last one: "ros" led with the guelder rose, and Enter on "rose" guessed
+    // it. Only before the tree has loaded does the list come a render late.
+    const now = suggestionsNow(dataset, query, SUGGESTIONS, exclude)
+    if (now) {
+      setOptions(now.labels)
+      setWhy(now.aliases)
+    } else {
+      const results = await fetchSuggestions(dataset, query, SUGGESTIONS, exclude)
+      const aliases = await fetchMatchedAliases(dataset, query, results)
+      if (latest.current !== query) return
+      setOptions(results)
+      setWhy(aliases)
+    }
     let next: BulkOption | null = null
     if (bulk && onBulkGuess && isBulkQuery(query)) {
       try {
@@ -96,9 +114,7 @@ export default function GuessInput({ onGuess, onBulkGuess, bulk, disabled, exclu
         // The ordinary suggestions still stand without the bulk row.
       }
     }
-    setOptions(results)
-    setWhy(aliases)
-    setOffer(next)
+    if (latest.current === query) setOffer(next)
   }
 
   function bulkLabel(option: BulkOption): string {

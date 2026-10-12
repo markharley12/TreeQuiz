@@ -6,7 +6,7 @@
  * signatures stay: a dataset's tree is fetched on first use, and the components
  * should not care whether it already has been.
  */
-import { DATASETS, entryFor, loadDataset, loadInfo } from './engine/datasets'
+import { DATASETS, entryFor, loadDataset, loadedDataset, loadInfo } from './engine/datasets'
 import { getGameState, pick, suggest } from './engine/game'
 import { lineage, search, stats, subtree } from './engine/explore'
 import { infoFor, type Info } from './engine/info'
@@ -57,6 +57,17 @@ export async function fetchOddReveal(dataset: string, puzzle: Puzzle): Promise<R
 
 export async function fetchSuggestions(dataset: string, q: string, limit = 50, exclude: string[] = []): Promise<string[]> {
   return suggest(await loadDataset(dataset), q, limit, exclude)
+}
+
+/** Suggestions and why each was made, answered now, or null while the tree
+ *  has not loaded. The guess box needs its list in the same render as the
+ *  keystroke it answers (see GuessInput); in a round, the tree has loaded. */
+export function suggestionsNow(dataset: string, q: string, limit = 50, exclude: string[] = []):
+  { labels: string[]; aliases: Map<string, string> } | null {
+  const ds = loadedDataset(dataset)
+  if (!ds) return null
+  const labels = suggest(ds, q, limit, exclude)
+  return { labels, aliases: matchedAliases(ds, q, labels) }
 }
 
 /** Why each of `labels` was suggested for `q`, where its name does not say. */

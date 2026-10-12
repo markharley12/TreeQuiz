@@ -50,6 +50,16 @@ describe('a round', () => {
     expect(mock.mock.calls.filter(([u]) => String(u).includes('animals/tree')).length).toBe(1)
   })
 
+  it('answers suggestions without waiting once the tree is loaded, and the same as waiting', async () => {
+    stubFetch()
+    const api = await freshApi()
+    expect(api.suggestionsNow('plants', 'rose')).toBeNull()
+    await api.startRound('plants')
+    const now = api.suggestionsNow('plants', 'rose', 5)
+    expect(now?.labels).toEqual(await api.fetchSuggestions('plants', 'rose', 5))
+    expect(now?.labels[0]).toBe('Rose')
+  })
+
   it('does not keep a failed download, so the next attempt can succeed', async () => {
     let down = true
     stubFetch(() => down)

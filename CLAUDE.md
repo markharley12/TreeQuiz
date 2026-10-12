@@ -150,6 +150,12 @@ score, not an outcome.
   the caffeine popup showed an empty black box.
 - **The picker balances its rows**, at most four across: five trees are three
   and two, not four and a stray.
+- **The guess box's suggestions arrive in the keystroke's own render**
+  (`suggestionsNow`, once the tree has loaded, as it has in any round).
+  MUI keeps its highlight on an option still present when the list changes
+  under unchanged text, so a list one render late kept whatever led the
+  last list: "ros" led with the guelder rose, and Enter on "rose" guessed
+  it. Inherited from TaxoQuiz; plants' many shared words surfaced it.
 - **Results and stats** (`results.ts`, Oct 2026): a finished round shares as
   squares by warmth band, ten to a line, capped at 50 (a bulk guess can spend
   100). Dailies are kept per tree under `treequiz:daily:<id>`, keyed by day,
