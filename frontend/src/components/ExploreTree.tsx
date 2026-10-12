@@ -18,7 +18,7 @@ import { HoverPreview, NodeThumb, useHoverPreview } from './HoverPreview'
 import InfoPopup from './InfoPopup'
 import { displayName } from '../names'
 import { entryFor } from '../engine/datasets'
-import { nounPlural, noun } from '../words'
+import { count, noun, nounsOf } from '../words'
 
 type NodeDatum = CustomNodeElementProps['nodeDatum']
 
@@ -217,7 +217,7 @@ export default function ExploreTree() {
   const [confirmExpand, setConfirmExpand] = useState(false)
   const manifest = entryFor(dataset)?.manifest
   const showNames = !manifest?.hide_names
-  const plural = manifest ? nounPlural(manifest) : 'leaves'
+  const nouns = nounsOf(manifest)
 
   // The library re-applies a position only when the props change, so moving to
   // exactly the last position told, after the reader has panned away from it,
@@ -262,7 +262,7 @@ export default function ExploreTree() {
   // changes it, and a box fitted to portrait is wrong in landscape.
   // Counted here rather than beside the JSX, because the framing effect below
   // needs it and the early returns further down would put it out of reach.
-  const rendered = tree ? countRendered(toD3(tree, expanded, dataset, plural, showNames)) : 0
+  const rendered = tree ? countRendered(toD3(tree, expanded, dataset, nouns, showNames)) : 0
   const hasTree = tree !== null
   useEffect(() => {
     const el = containerRef.current
@@ -506,7 +506,7 @@ export default function ExploreTree() {
   if (error && !tree) return <Alert severity="error" sx={{ m: 3 }}>{error}</Alert>
   if (!tree) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}><CircularProgress /></Box>
 
-  const d3Data = toD3(tree, expanded, dataset, plural, showNames)
+  const d3Data = toD3(tree, expanded, dataset, nouns, showNames)
   // No dataset anchor: each node carries its own rank position. See colors.ts.
   const colorFor = makeColorScale(colorScheme)
   const tintFor = makeTintScale(colorScheme)
@@ -530,7 +530,7 @@ export default function ExploreTree() {
                 <Typography variant="body2" noWrap>{displayName(o.label)}</Typography>
                 <Typography variant="caption" color="text.secondary" noWrap>
                   {showNames && o.label !== o.name ? `${o.name} · ` : ''}{o.rank || (o.is_leaf ? (manifest ? noun(manifest) : 'leaf') : 'group')}
-                  {!o.is_leaf && ` · ${o.leaf_count.toLocaleString()} ${plural}`}
+                  {!o.is_leaf && ` · ${count(o.leaf_count, nouns)}`}
                 </Typography>
               </Stack>
             </li>

@@ -4,6 +4,7 @@
 // decision that reads as arbitrary and is not: the two budgets that must stay
 // separate numbers, the box width that has to be measured rather than assumed,
 // and the two traps around truncated nodes — see the notes on each.
+import { count, LEAVES, type Nouns } from './words'
 import { cachedInfo } from './infoCache'
 import type { ExploreNode } from './api'
 import type { Placed, View } from './gameLayout'
@@ -212,19 +213,19 @@ export function spliceIn(node: ExploreNode, name: string, replacement: ExploreNo
  *  else (a binomial under "lion", a code under "Graph theory") and the
  *  manifest does not hide names, else its rank; for a group, its rank and how
  *  many leaves it holds. */
-export function subtitle(node: ExploreNode, plural = 'leaves', showNames = true): string {
+export function subtitle(node: ExploreNode, nouns: Nouns = LEAVES, showNames = true): string {
   if (node.child_count === 0) return showNames && node.name !== node.label ? node.name : node.rank
-  return `${node.rank || 'group'} · ${node.leaf_count.toLocaleString()} ${plural}`
+  return `${node.rank || 'group'} · ${count(node.leaf_count, nouns)}`
 }
 
-export function toD3(node: ExploreNode, expanded: Set<string>, dataset: string, plural = 'leaves', showNames = true): D3Data {
+export function toD3(node: ExploreNode, expanded: Set<string>, dataset: string, nouns: Nouns = LEAVES, showNames = true): D3Data {
   const isOpen = expanded.has(node.name)
   const isLeaf = node.child_count === 0
   return {
     name: node.name,
     attributes: {
       label: node.label,
-      sub: subtitle(node, plural, showNames),
+      sub: subtitle(node, nouns, showNames),
       // Empty until something has looked this node up. Read straight from the
       // cache rather than threaded through as a prop: the component subscribes
       // to the cache, so a lookup landing rebuilds this and the picture appears.
@@ -238,7 +239,7 @@ export function toD3(node: ExploreNode, expanded: Set<string>, dataset: string, 
       hasHidden: !isLeaf && !isOpen,
       collapsed: !isOpen,
     },
-    children: isOpen ? node.children.map((c) => toD3(c, expanded, dataset, plural, showNames)) : [],
+    children: isOpen ? node.children.map((c) => toD3(c, expanded, dataset, nouns, showNames)) : [],
   }
 }
 

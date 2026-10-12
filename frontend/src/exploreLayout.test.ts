@@ -368,7 +368,7 @@ describe('subtitle', () => {
 
   it('hides a name the manifest calls an opaque key', () => {
     // "Q176926" under "cuíca" says nothing to anyone playing.
-    expect(subtitle(node('Q176926', { label: 'cuíca', rank: '', child_count: 0 }), 'instruments', false)).toBe('')
+    expect(subtitle(node('Q176926', { label: 'cuíca', rank: '', child_count: 0 }), { one: 'instrument', many: 'instruments' }, false)).toBe('')
   })
 
   it('falls back to the rank when a leaf is labelled by its name', () => {
@@ -376,12 +376,13 @@ describe('subtitle', () => {
   })
 
   it("gives a group its rank and its leaf count, in the dataset's words", () => {
-    expect(subtitle(bush('Aves', 3, { rank: 'class', leaf_count: 11000 }), 'species'))
+    expect(subtitle(bush('Aves', 3, { rank: 'class', leaf_count: 11000 }), { one: 'species', many: 'species' }))
       .toBe('class · 11,000 species')
   })
 
   it('says "group" for an unranked internal node', () => {
-    expect(subtitle(bush('x', 2, { rank: '', leaf_count: 2 }), 'fields')).toBe('group · 2 fields')
+    expect(subtitle(bush('x', 2, { rank: '', leaf_count: 2 }), { one: 'field', many: 'fields' })).toBe('group · 2 fields')
+    expect(subtitle(bush('x', 1, { rank: 'Class', leaf_count: 1 }), { one: 'animal', many: 'animals' })).toBe('Class · 1 animal')
   })
 })
 

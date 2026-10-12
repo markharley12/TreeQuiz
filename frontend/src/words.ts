@@ -12,6 +12,23 @@ export function nounPlural(m: Manifest): string {
   return m.noun_plural || `${noun(m)}s`
 }
 
+/** A leaf's name in both numbers, for counting. */
+export interface Nouns {
+  one: string
+  many: string
+}
+
+export const LEAVES: Nouns = { one: 'leaf', many: 'leaves' }
+
+export function nounsOf(m: Manifest | undefined): Nouns {
+  return m ? { one: noun(m), many: nounPlural(m) } : LEAVES
+}
+
+/** "1 animal", "1,615 animals". */
+export function count(n: number, nouns: Nouns): string {
+  return `${n.toLocaleString()} ${n === 1 ? nouns.one : nouns.many}`
+}
+
 export function shortTitle(m: Manifest): string {
   return m.short_title || m.title
 }
