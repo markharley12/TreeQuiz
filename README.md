@@ -54,6 +54,11 @@ node shows *which branch* the answer is on, never how deep.
 - **Explore** has no secret: open the tree anywhere and read it. Every node has
   a popup. For maths that's its MSC topics; for animals and languages it's the
   Wikipedia summary; for chess, the position's board.
+- **A finished round can be shared as squares**, one per guess, coloured
+  by how close it came (🟥🟧🟨🟩, 🎯 for the answer): how the round went,
+  and nothing about where the answer is. Dailies are kept per tree on the
+  device, with a streak and a chart of guesses per win, and the front page
+  ticks the trees whose daily is done.
 - Each tree keeps its own round, so switching tree loses nothing.
 
 ## Playing

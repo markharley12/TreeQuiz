@@ -1,5 +1,7 @@
 import { Box, ButtonBase, Typography } from '@mui/material'
 import { DATASETS } from '../engine/datasets'
+import { utcToday } from '../engine/seed'
+import { readDailies, score } from '../results'
 import { shortTitle } from '../words'
 import { ACCENT, CARD, FONT_DISPLAY, INK_MUTED, LINE } from '../theme'
 
@@ -11,6 +13,7 @@ interface Props {
 /** The trees there are to play, as cards: which one is a choice the front page
  *  should show at a glance rather than bury in the settings menu. */
 export default function DatasetPicker({ selected, onPick }: Props) {
+  const today = utcToday()
   // At most four across, and rows as even as that allows: five trees went four
   // and a stray one, and read better as three and two.
   const rows = Math.ceil(DATASETS.length / 4)
@@ -26,6 +29,9 @@ export default function DatasetPicker({ selected, onPick }: Props) {
     >
       {DATASETS.map(({ id, manifest }) => {
         const on = id === selected
+        // Today's daily on this tree, done: a tick and its score, so the front
+        // page shows which trees are still to play today.
+        const done = readDailies(id)[today]
         return (
           <ButtonBase
             key={id}
@@ -40,8 +46,17 @@ export default function DatasetPicker({ selected, onPick }: Props) {
               '&:hover': { borderColor: on ? ACCENT : INK_MUTED },
             }}
           >
-            <Typography sx={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: '1.15rem', lineHeight: 1.2 }}>
+            <Typography sx={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: '1.15rem', lineHeight: 1.2, display: 'flex', alignItems: 'baseline', gap: 1 }}>
               {shortTitle(manifest)}
+              {done && (
+                <Box
+                  component="span"
+                  aria-label={done.won ? `Today's done in ${score(done)}` : 'Today\'s done, given up'}
+                  sx={{ ml: 'auto', fontFamily: 'inherit', fontSize: '0.8rem', fontWeight: 600, color: done.won ? 'success.dark' : 'text.secondary', whiteSpace: 'nowrap' }}
+                >
+                  ✓{done.won ? ` ${score(done)}` : ''}
+                </Box>
+              )}
             </Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5, fontSize: '0.8rem', lineHeight: 1.35 }}>
               {manifest.blurb}

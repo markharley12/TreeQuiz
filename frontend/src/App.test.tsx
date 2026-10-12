@@ -486,3 +486,78 @@ describe('shared links', () => {
     await waitFor(() => expect(startRound).toHaveBeenLastCalledWith('maths', expect.objectContaining({ seed: '08NY-VMYV01' })))
   })
 })
+
+describe('the daily record', () => {
+  const DAILY_KEY = `treequiz:daily:${DATASET}`
+  /** Lion found with its own warmth, after a tiger that shared an order. */
+  const wonTree = () => ({ ...TREE, children: [{
+    name: 'Carnivora', label: 'Carnivora', rank: 'Order', node_type: 'ancestor', warmth: 0.5,
+    depth: 1, on_secret_path: true, children: [
+      { name: 'Panthera tigris', label: 'tiger', node_type: 'guess', warmth: 1, depth: 2,
+        on_secret_path: false, lca_depth: 1, lca_warmth: 0.5, children: [] },
+      { name: 'Panthera leo', label: 'lion', node_type: 'guess', warmth: 1, depth: 2,
+        on_secret_path: true, lca_depth: 2, lca_warmth: 1, children: [] },
+    ],
+  }] })
+
+  it('keeps a finished daily with how warm each guess was', async () => {
+    fetchGameState.mockResolvedValue(wonTree())
+    localStorage.setItem(STORAGE_KEY, session({ mode: 'daily', guesses: ['tiger'] }))
+    await renderApp()
+    await screen.findByText('RZVM-X6N69Q')
+    nextGuess = 'lion'
+    fireEvent.click(screen.getByRole('button', { name: /submit guess/i }))
+    expect(await screen.findByText(/you got it/i)).toBeTruthy()
+    await waitFor(() => expect(localStorage.getItem(DAILY_KEY)).not.toBeNull())
+    expect(JSON.parse(localStorage.getItem(DAILY_KEY)!)[today()]).toEqual({
+      seed: 'RZVM-X6N69Q', guesses: ['tiger', 'lion'], warmths: [0.5, 1], hints: 0, hintPoints: 0, won: true,
+    })
+  })
+
+  it('does not keep a practice round', async () => {
+    fetchGameState.mockResolvedValue(wonTree())
+    localStorage.setItem(STORAGE_KEY, session({ guesses: ['tiger', 'lion'], won: true }))
+    await renderApp()
+    await screen.findByText(/you got it/i)
+    expect(localStorage.getItem(DAILY_KEY)).toBeNull()
+  })
+
+  it('copies the result as squares that do not give the answer away', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
+    fetchGameState.mockResolvedValue(wonTree())
+    localStorage.setItem(STORAGE_KEY, session({ mode: 'daily', guesses: ['tiger', 'lion'], won: true }))
+    await renderApp()
+    await waitFor(() => expect(fetchGameState).toHaveBeenCalled())
+    fireEvent.click(await screen.findByRole('button', { name: /copy result/i }))
+    await waitFor(() => expect(writeText).toHaveBeenCalled())
+    const text = writeText.mock.calls[0][0] as string
+    expect(text).toContain('🟨🎯')
+    expect(text).toContain('2 guesses')
+    expect(text.toLowerCase()).not.toContain('lion')
+    vi.unstubAllGlobals()
+  })
+
+  it('does not deal a finished daily twice: the front page shows the stats instead', async () => {
+    // A practice round has since replaced the saved session, so only the
+    // record knows today's daily is done.
+    localStorage.setItem(DAILY_KEY, JSON.stringify({ [today()]: {
+      seed: 'RZVM-X6N69Q', guesses: ['tiger', 'lion'], warmths: [0.5, 1], hints: 0, hintPoints: 0, won: true,
+    } }))
+    await renderApp()
+    fireEvent.click(screen.getByRole('button', { name: /today.s animal ✓/i }))
+    expect(startRound).not.toHaveBeenCalled()
+    expect(await screen.findByText(/your dailies/i)).toBeTruthy()
+    expect(screen.getByLabelText("Today's result").textContent).toBe('🟨🎯')
+  })
+
+  it('resumes a daily in progress rather than dealing it again', async () => {
+    // The button used to restart today's round from nothing, guesses and all.
+    localStorage.setItem(STORAGE_KEY, session({ mode: 'daily' }))
+    await renderApp()
+    fireEvent.click(await screen.findByRole('button', { name: /^home$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /resume today.s animal/i }))
+    expect(await screen.findByText('Tiger')).toBeTruthy()
+    expect(startRound).not.toHaveBeenCalled()
+  })
+})

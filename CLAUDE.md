@@ -122,6 +122,15 @@ no case; the synthetic `C0`/`P`/`C` tree now reaches it.
   the caffeine popup showed an empty black box.
 - **The picker balances its rows**, at most four across: five trees are three
   and two, not four and a stray.
+- **Results and stats** (`results.ts`, Oct 2026): a finished round shares as
+  squares by warmth band, ten to a line, capped at 50 (a bulk guess can spend
+  100). Dailies are kept per tree under `treequiz:daily:<id>`, keyed by day,
+  first finish only, and the entry is the whole round (seed, guesses,
+  warmths), so the front page can show today's result after a practice round
+  has replaced the saved session. A finished daily is never dealt twice: the
+  daily button opens the stats instead, and a daily in progress *resumes*
+  (it used to restart from nothing). Streaks count calendar days in UTC, as
+  the daily's seed does, and survive until today is over.
 
 ## Data notes
 

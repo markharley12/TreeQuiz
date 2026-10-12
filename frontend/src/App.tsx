@@ -4,13 +4,14 @@ import {
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, IconButton, Link,
 } from '@mui/material'
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined'
-import { useCoarsePointer, useNarrow } from './media'
+import { useNarrow } from './media'
 import GuessInput from './components/GuessInput'
 import GuessList from './components/GuessList'
 import GameTree from './components/GameTree'
 import ExploreTree from './components/ExploreTree'
 import SettingsMenu from './components/SettingsMenu'
 import DatasetPicker from './components/DatasetPicker'
+import StatsDialog from './components/StatsDialog'
 import { datasetForSeed, fetchGameState, startRound, type TreeNode } from './api'
 import { useSettings, setSetting } from './settings'
 import { FONT_DISPLAY, PAGE_PAD, TREE_BLEED } from './theme'
@@ -20,6 +21,8 @@ import { entryFor, storageKey } from './engine/datasets'
 import { normalise } from './engine/seed'
 import type { Manifest } from './engine/tree'
 import { readLink, shareBase, shareLink, withoutLink } from './shareLink'
+import { useSharer } from './sharer'
+import { guessWarmths, readDailies, recordDaily, shareText } from './results'
 import { bulkUnlock, noun, shortTitle } from './words'
 
 type Mode = 'daily' | 'practice' | 'explore'
@@ -167,12 +170,17 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
   const [seed, setSeed] = useState<string>(saved?.seed ?? '')
   const [seedInput, setSeedInput] = useState('')
   const narrow = useNarrow()
-  const canShareSheet = useCoarsePointer() && typeof navigator.share === 'function'
+  const roundSharer = useSharer()
+  const resultSharer = useSharer()
+  const canShareSheet = roundSharer.canShareSheet
+  // The day a daily is for, so one finished after midnight is kept as the day
+  // it was dealt rather than the next.
+  const [roundDay, setRoundDay] = useState(saved?.date ?? today())
+  const [statsOpen, setStatsOpen] = useState(false)
   const [seedError, setSeedError] = useState<string | null>(null)
   // When a rejected seed belongs to another tree: which, to offer playing it there.
   const [seedElsewhere, setSeedElsewhere] = useState<{ id: string; seed: string } | null>(null)
   const [pendingLink, setPendingLink] = useState<string | null>(boot.ask ? boot.linked : null)
-  const [copied, setCopied] = useState(false)
   const [guesses, setGuesses] = useState<string[]>(saved?.guesses ?? [])
   const [treeData, setTreeData] = useState<TreeNode | null>(null)
   const [won, setWon] = useState(saved?.won ?? false)
@@ -225,6 +233,17 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
     writeStorage(viewKey(dataset), mode === 'explore' ? 'explore' : null)
   }, [dataset, mode])
 
+  // Keep a finished daily for the stats — once its tree is in, since the
+  // squares are read off it. Only the day's first finish is kept, so the same
+  // round reloaded, or replayed, changes nothing.
+  const dailyOver = roundMode === 'daily' && (won || revealed) && secret !== null
+  useEffect(() => {
+    if (!dailyOver || (guesses.length > 0 && treeData === null)) return
+    recordDaily(dataset, roundDay, {
+      seed, guesses, warmths: guessWarmths(treeData, guesses), hints, hintPoints, won,
+    })
+  }, [dailyOver, treeData]) // eslint-disable-line react-hooks/exhaustive-deps
+
   async function startGame(selected: RoundMode, sharedSeed?: string) {
     setSeedError(null)
     setSeedElsewhere(null)
@@ -242,6 +261,7 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
       setHintPoints(0)
       setSecret(round.secret)
       setSeed(round.seed)
+      setRoundDay(today())
     } catch (e) {
       // A rejected seed must leave the current round alone rather than
       // half-start one — and if it belongs to another tree, say which.
@@ -281,25 +301,18 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
     setTreeData(await fetchGameState(dataset, secret!, guesses, next))
   }
 
-  // A link on the web; on a phone the share sheet, which is how a phone sends
-  // anything; elsewhere the clipboard, since a desktop share sheet is patchy.
-  async function shareRound() {
-    const text = shareLink(shareBase(window.location.href), dataset, seed)
-    if (canShareSheet) {
-      try {
-        await navigator.share({ url: text })
-      } catch {
-        // Dismissed, most likely. Nothing to undo.
-      }
-      return
-    }
-    try {
-      await navigator.clipboard.writeText(text)
-    } catch {
-      return   // clipboard is blocked outside a secure context; the seed is on screen anyway
-    }
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
+  const roundLink = () => shareLink(shareBase(window.location.href), dataset, seed)
+
+  // The round as a link, to play; and once it is over, how it went, to show.
+  function shareRound() {
+    void roundSharer.share({ url: roundLink() })
+  }
+
+  function shareResult() {
+    void resultSharer.share({ text: shareText({
+      title: shortTitle(manifest), daily: roundMode === 'daily', day: roundDay,
+      warmths: guessWarmths(treeData, guesses), hints, hintPoints, won, link: roundLink(),
+    }) })
   }
 
   // Back to the front page. The round stays saved, and the front page offers it.
@@ -337,6 +350,10 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
   )
 
   const resumable = roundMode !== null && secret !== null && !won && !revealed && (guesses.length > 0 || hints > 0)
+  // Today's daily: the round in memory if that is it, and otherwise its record,
+  // which the stats show — a finished daily is not dealt a second time.
+  const dailyInMemory = roundMode === 'daily' && secret !== null
+  const doneToday = (dailyInMemory && (won || revealed)) || Boolean(readDailies(dataset)[today()])
 
   if (loading) return (
     <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}><CircularProgress /></Box>
@@ -360,13 +377,15 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
           {manifest.prompt}
         </Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: 'center' }}>
-          {resumable && (
-            <Button variant="contained" size="large" onClick={resume}>
-              Resume {roundMode === 'daily' ? 'today’s round' : 'your round'}
-            </Button>
+          {resumable && roundMode === 'practice' && (
+            <Button variant="contained" size="large" onClick={resume}>Resume your round</Button>
           )}
-          <Button variant={resumable ? 'outlined' : 'contained'} size="large" onClick={() => startGame('daily')}>
-            Today’s {leaf}
+          <Button
+            variant={(resumable && roundMode === 'practice') || doneToday ? 'outlined' : 'contained'}
+            size="large"
+            onClick={dailyInMemory ? resume : doneToday ? () => setStatsOpen(true) : () => startGame('daily')}
+          >
+            {dailyInMemory && resumable ? `Resume today’s ${leaf}` : `Today’s ${leaf}${doneToday ? ' ✓' : ''}`}
           </Button>
           <Button variant="outlined" size="large" onClick={() => startGame('practice')}>
             Practice
@@ -378,7 +397,9 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
         <Typography variant="body2" sx={{ mt: 1.5, textAlign: 'center', color: 'text.secondary' }}>
           Explore has no secret and nothing to guess — open the tree wherever you
           like and read your way around it.
+          {' '}<Link component="button" variant="body2" onClick={() => setStatsOpen(true)} sx={{ verticalAlign: 'baseline' }}>Your stats</Link>
         </Typography>
+        <StatsDialog open={statsOpen} onClose={() => setStatsOpen(false)} dataset={dataset} title={shortTitle(manifest)} />
 
         {/* Set apart: a different job from starting a round. */}
         <Box sx={{ mt: 4, pt: 3, borderTop: 1, borderColor: 'divider' }}>
@@ -433,6 +454,15 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
   const newRound = mode === 'practice' && (
     <Button variant="outlined" onClick={() => startGame('practice')}>New {leaf}</Button>
   )
+  // How the round went, as squares that give nothing away; and for a daily,
+  // where it leaves the streak.
+  const afterRound = <>
+    <Button variant={mode === 'daily' ? 'contained' : 'text'} onClick={shareResult}>
+      {resultSharer.copied ? 'Copied' : canShareSheet ? 'Share result' : 'Copy result'}
+    </Button>
+    {mode === 'daily' && <Button variant="outlined" onClick={() => setStatsOpen(true)}>Stats</Button>}
+    {newRound}
+  </>
 
   return (
     // A column exactly the screen's height, so the tree takes whatever the
@@ -454,8 +484,8 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
               * the code in its chip already looks like what it is. */}
             <Typography variant="caption" sx={{ color: 'text.secondary', letterSpacing: '0.08em', textTransform: 'uppercase', display: { xs: 'none', sm: 'inline' } }}>Seed</Typography>
             <Chip label={seed} size="small" variant="outlined" sx={{ fontFamily: 'ui-monospace, monospace', fontWeight: 600, letterSpacing: '0.06em' }} />
-            <Tooltip title={copied ? 'Copied' : 'Copy a link to this round'} open={copied || undefined}>
-              <Button size="small" sx={SEED_ROW_BUTTON} onClick={shareRound}>{copied ? 'Copied' : canShareSheet ? 'Share' : 'Copy link'}</Button>
+            <Tooltip title={roundSharer.copied ? 'Copied' : 'Copy a link to this round'} open={roundSharer.copied || undefined}>
+              <Button size="small" sx={SEED_ROW_BUTTON} onClick={shareRound}>{roundSharer.copied ? 'Copied' : canShareSheet ? 'Share' : 'Copy link'}</Button>
             </Tooltip>
             <Typography variant="caption" sx={{ color: 'text.secondary', display: { xs: 'none', sm: 'inline' }, fontFamily: FONT_DISPLAY, fontStyle: 'italic', fontSize: '0.85rem' }}>
               share this to let someone play the same round
@@ -484,25 +514,25 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
         />
       )}
       {won && (
-        <Stack direction="row" spacing={2} sx={{ mt: 1, alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
+        <Stack direction="row" spacing={2} useFlexGap sx={{ mt: 1, alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
           <Typography variant="h5" sx={{ color: 'success.dark' }}>
             You got it in {score} {hintPoints > 0
               ? `(${guesses.length} ${guesses.length === 1 ? 'guess' : 'guesses'} + ${hintPoints} for ${hints === 1 ? 'a hint' : `${hints} hints`})`
               : guesses.length === 1 ? 'guess' : 'guesses'} — the answer was{' '}
             <Box component="em" sx={{ fontStyle: 'italic' }}>{displayName(secret ?? '')}</Box>
           </Typography>
-          {newRound}
+          {afterRound}
         </Stack>
       )}
       {revealed && !won && (
-        <Stack direction="row" spacing={2} sx={{ mt: 1, alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
+        <Stack direction="row" spacing={2} useFlexGap sx={{ mt: 1, alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
           {/* Stated, not celebrated: success green would congratulate the one
             * outcome that is not a success. */}
           <Typography variant="h5" sx={{ color: 'text.secondary' }}>
             The answer was{' '}
             <Box component="em" sx={{ fontStyle: 'italic', color: 'text.primary' }}>{displayName(secret ?? '')}</Box>
           </Typography>
-          {newRound}
+          {afterRound}
         </Stack>
       )}
       {revealed && !won && closest && (
@@ -519,6 +549,7 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
         />
       </Box>
 
+      <StatsDialog open={statsOpen} onClose={() => setStatsOpen(false)} dataset={dataset} title={shortTitle(manifest)} />
       {/* A shared link arriving mid-round: asked, because opening a link is not
         * a decision to throw away a daily in progress. */}
       <Dialog open={pendingLink !== null} onClose={() => setPendingLink(null)}>
