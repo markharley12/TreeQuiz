@@ -516,13 +516,13 @@ def cities_data():
               "Qidf": {"title": "Île-de-France"}, "Qara": {"title": "Auvergne-Rhône-Alpes"},
               "Qdep": {"title": "Rhône (department)"}, "Qa": {"title": "Region A"}, "Qb": {"title": "Region B"},
               "Qny": {"title": "New York (state)"}}
-    city = lambda title, countries, **kw: {"sitelinks": 200, "pop": True, "title": title, "label": title,  # noqa: E731
-                                           "countries": countries, **kw}
+    city = lambda title, countries, **kw: {"sitelinks": 200, "population": 100000, "capital": False,  # noqa: E731
+                                           "title": title, "label": title, "countries": countries, **kw}
     cities = {"Qparis": city("Paris", ["Qfr", "Qold"]), "Qvers": city("Versailles", ["Qfr"]), "Qlyon": city("Lyon", ["Qfr"]),
               "Qnice": city("Nice", ["Qfr"]), "Qsplit": city("Splitville", ["Qfr"]),
               "Qjer": city("Jerusalem", ["Qil", "Qps"]), "Qsg": city("Singapore", ["Qsg"]),
               "Qnyc": city("New York City", ["Qus"]), "Qbk": city("Brooklyn", ["Qus"]), "Qbuf": city("Buffalo", ["Qus"]),
-              "Qtroy": city("Troy", ["Qold"], pop=False), "Qsmall": city("Hamlet", ["Qfr"], sitelinks=10)}
+              "Qtroy": city("Troy", ["Qold"], population=None), "Qsmall": city("Hamlet", ["Qfr"], sitelinks=10)}
     graph = {"types": {"Treg": "region of France", "Tdep": "department of France", "Tst": "U.S. state"},
              "up": {"Qparis": ["Qidf"], "Qvers": ["Qidf"], "Qlyon": ["Qdep"], "Qdep": ["Qara"], "Qnice": ["Qa"],
                     "Qsplit": ["Qa", "Qb"], "Qnyc": ["Qny"], "Qbk": ["Qnyc"], "Qbuf": ["Qny"]},
@@ -552,10 +552,23 @@ def test_a_place_inside_another_chosen_city_is_part_of_it_not_a_city(monkeypatch
     assert bcy.above("Qbk", data["graph"]) == {"Qnyc", "Qny"}
 
 
+def test_a_small_town_is_kept_only_as_a_capital_or_a_city_state(monkeypatch):
+    # Sitelinks can be made in bulk: a town of 6,500 had more than Seville.
+    monkeypatch.setattr(bcy, "NOT_REGION", set())
+    data, regions, by_iso = cities_data()
+    data["cities"]["Qtown"] = {**data["cities"]["Qnice"], "title": "Monte Águila", "population": 6500}
+    data["cities"]["Qvaduz"] = {**data["cities"]["Qnice"], "title": "Vaduz", "population": 5600, "capital": True}
+    data["cities"]["Qsg"]["population"] = 900
+    titles = {it["title"] for it in bcy.choose(data, regions, by_iso, 100)}
+    assert "Monte Águila" not in titles
+    assert {"Vaduz", "Singapore"} <= titles
+
+
 def test_a_country_off_natural_earths_map_stops_the_build(monkeypatch):
     monkeypatch.setattr(bcy, "NOT_REGION", set())
     data, regions, by_iso = cities_data()
-    data["cities"]["Qatl"] = {"sitelinks": 200, "pop": True, "title": "Atlantis", "label": "Atlantis", "countries": ["Qsea"]}
+    data["cities"]["Qatl"] = {"sitelinks": 200, "population": 100000, "capital": False, "title": "Atlantis",
+                              "label": "Atlantis", "countries": ["Qsea"]}
     with pytest.raises(SystemExit, match="Atlantis"):
         bcy.choose(data, regions, by_iso, 100)
 

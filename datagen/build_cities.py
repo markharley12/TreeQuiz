@@ -31,6 +31,11 @@ Decisions:
   municipality is taken, which needs the population floor: a municipality can
   be a hamlet. Tiny capitals (Valletta, Vaduz) are typed as cities and come
   in that way.
+- **A small place must be a capital.** Below `SMALL_TOWN` people a city is
+  kept only as the capital of something (Wikidata's P1376: Valletta,
+  Vaduz, Pierre, South Dakota) or as a city-state. Sitelinks can be made in
+  bulk: Monte Águila, a Chilean town of 6,500, had 206 of them, more than
+  Seville, and Łobez and Uetersen were the same.
 - **A place inside another chosen city is part of it**, not a city:
   Manhattan and Brooklyn (in New York City) and Hollywood (in Los Angeles)
   are settlements on Wikidata, and are dropped.
@@ -100,6 +105,7 @@ ARTICLES = {
 BATCH = 200
 
 POP_FLOOR = 50000     # for places that are settlements but not typed as cities
+SMALL_TOWN = 20000    # below which a city must be a capital
 # Settlements and municipalities: human settlement, municipality, city or town.
 SETTLED = ("Q486972", "Q15284", "Q7930989")
 CITIES = """SELECT DISTINCT ?c WHERE {
@@ -114,14 +120,15 @@ SETTLEMENTS = ("""SELECT DISTINCT ?c WHERE {
   VALUES ?root { """ + " ".join(f"wd:{q}" for q in SETTLED) + """ }
   ?c wdt:P31/wdt:P279* ?root
 }""")
-ABOUT = """SELECT ?c ?sl ?label ?enwiki ?country ?pop ?gone WHERE {
+ABOUT = """SELECT ?c ?sl ?label ?enwiki ?country ?pop ?gone ?capital WHERE {
   VALUES ?c { %s }
   ?c wikibase:sitelinks ?sl .
   OPTIONAL { ?c rdfs:label ?label FILTER(lang(?label) = "en") }
   OPTIONAL { ?enwiki schema:about ?c ; schema:isPartOf <https://en.wikipedia.org/> }
   OPTIONAL { ?c wdt:P17 ?country }
-  BIND(EXISTS { ?c wdt:P1082 ?p } AS ?pop)
+  OPTIONAL { ?c wdt:P1082 ?pop }
   BIND(EXISTS { ?c wdt:P576 ?d } AS ?gone)
+  BIND(EXISTS { ?c wdt:P1376 ?of } AS ?capital)
 }"""
 FIRST_LEVEL = """SELECT DISTINCT ?type ?typel WHERE {
   ?type wdt:P279* wd:Q10864048 .
@@ -180,7 +187,7 @@ def _batched(query: str, qids: list[str]) -> list[dict]:
 
 def wikidata(refresh: bool) -> dict:
     """Everything the build reads from Wikidata, fetched once at FETCH_FLOOR."""
-    path = CACHE / "cities" / f"wikidata-{FETCH_FLOOR}-{POP_FLOOR}.json"
+    path = CACHE / "cities" / f"wikidata-{FETCH_FLOOR}-{POP_FLOOR}-v3.json"
     if path.exists() and not refresh:
         return json.loads(path.read_text())
     typed = {_qid(b, "c") for b in _sparql(CITIES % FETCH_FLOOR)}
@@ -191,10 +198,17 @@ def wikidata(refresh: bool) -> dict:
     for b in _batched(ABOUT, sorted(typed | settled)):
         c = cities.setdefault(_qid(b, "c"), {"sitelinks": int(b["sl"]["value"]), "countries": [],
                                               "label": b.get("label", {}).get("value"), "title": _title(b),
-                                              "pop": b["pop"]["value"] == "true", "gone": b["gone"]["value"] == "true"})
+                                              "population": None, "gone": b["gone"]["value"] == "true",
+                                              "capital": b["capital"]["value"] == "true"})
         k = _qid(b, "country")
         if k and k not in c["countries"]:
             c["countries"].append(k)
+        p = b.get("pop", {}).get("value")
+        if p:
+            try:
+                c["population"] = max(c["population"] or 0, round(float(p)))
+            except ValueError:
+                pass   # an unknown value, "somevalue"
     graph = located_in(sorted(cities))
     places_wanted = sorted({k for c in cities.values() for k in c["countries"]}
                            | {r for q in cities for r, _, _ in first_level(q, graph)})
@@ -296,6 +310,7 @@ EXCLUDE = {
     "Q5684": "Babylon: an ancient city, with the population of its site",
     "Q1363": "Tripura: an Indian state, filed on Wikidata as a city",
     "Q1209": "Bremen the state, a city-state on Wikidata; the city Bremen is its own item",
+    "Q43332": "Pompeii: the ancient city, with no people; the modern town is Pompei",
 }
 # First-level on Wikidata, but not the level a reader means by a region.
 NOT_REGION = {
@@ -366,9 +381,9 @@ def choose(data: dict, regions: dict, by_iso: dict, min_sitelinks: int) -> list[
         if len(ks) == 1:
             usual[ks[0][0]].update({t for _, t, _ in candidates(q)})
 
-    chosen, unplaced = [], []
+    chosen, unplaced, small = [], [], []
     for q, c in cities.items():
-        if c["sitelinks"] < min_sitelinks or not c["pop"] or not c["title"] or q in EXCLUDE:
+        if c["sitelinks"] < min_sitelinks or c["population"] is None or not c["title"] or q in EXCLUDE:
             continue
         ks = countries_of(c, places, regions, by_iso)
         if not ks:
@@ -384,6 +399,9 @@ def choose(data: dict, regions: dict, by_iso: dict, min_sitelinks: int) -> list[
         else:
             country, it["chain"] = ks[0]
             it["city_state"] = country == q     # Singapore is its own country
+            if c["population"] < SMALL_TOWN and not (c["capital"] or it["city_state"]):
+                small.append(c["title"])
+                continue
             if not it["city_state"]:
                 it["country"] = country
                 cands = candidates(q)
@@ -397,6 +415,8 @@ def choose(data: dict, regions: dict, by_iso: dict, min_sitelinks: int) -> list[
         chosen.append(it)
     if unplaced:
         raise SystemExit(f"cities with no country on Natural Earth's map: {sorted(unplaced)}")
+    if small:
+        print(f"small towns that are no capital, left out: {sorted(small)}")
     taken = {it["qid"] for it in chosen}
     return [it for it in chosen if not (above(it["qid"], graph) & taken)]
 

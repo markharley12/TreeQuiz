@@ -15,7 +15,7 @@ Eight datasets — **maths** (MSC2020, 517 fields), **languages** (Glottolog,
 415), **instruments** (Hornbostel–Sachs, 428), **animals** (TaxoQuiz's 530),
 **chess** (Lichess, 446 openings), **physics** (PhySH, 487 topics),
 **chemistry** (ChEBI, 465 chemicals), **cities** (Wikidata and Natural
-Earth, 626). Two games: the guessing round and odd one out. Python suite
+Earth, 622). Two games: the guessing round and odd one out. Python suite
 176 tests, frontend 475, both green;
 CI and Pages workflows written but **the repo has not been pushed** and has no
 GitHub remote yet. No Android build (TaxoQuiz's Capacitor setup was left out).
@@ -228,7 +228,9 @@ score, not an outcome.
   Cities are Wikidata's *city* subclasses **plus** any settlement or
   municipality of ≥50k people: Madrid is only a "municipality of Spain"
   there, and *city* alone lost 34 famous ones. A place inside another
-  chosen city (Manhattan, Hollywood) is dropped. A region is the country's
+  chosen city (Manhattan, Hollywood) is dropped, and a town under 20k
+  must be a capital of something (P1376): sitelinks can be made in bulk,
+  and Monte Águila (6,500 people) had 206. A region is the country's
   usual kind of first-level unit, nearest first; a city in two regions or
   two countries (Jerusalem) sits higher. Sitelinks are noisy here: bots
   inflate Brazilian municipalities (Osasco makes the cut, Córdoba in
