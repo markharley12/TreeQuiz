@@ -15,6 +15,7 @@ import { believedLevels, warmthByName } from './ladder'
 import { bodyForDate, fingerprint, normalise, resolve } from './seed'
 import { getGameState, leavesOf, pick, suggest } from './game'
 import { lineage, search, stats, subtree } from './explore'
+import { makeSet } from './odd'
 import { labelOf, ladderFrom, makeDataset, type Dataset, type LadderSpec, type Manifest, type RawNode } from './tree'
 
 type Outcome = { result?: unknown; error?: string }
@@ -28,6 +29,7 @@ interface DatasetCases {
     daily: { date: string; secret: string }[]
   }
   game: ({ secret: string; guesses: string[]; hints: number } & Outcome)[]
+  odd: ({ seed: string } & Outcome)[]
   suggest_exclude: string[]
   suggest: { q: string; limit: number; excluding: boolean; result: string[] }[]
   explore: {
@@ -46,6 +48,7 @@ interface Golden {
     normalise: ({ input: string } & Outcome)[]
   }
   ladder: { ladder: LadderSpec | null; tree: RawNode; believed: Record<string, number | null>; warmth: Record<string, number> }[]
+  odd: ({ tree: RawNode; seed: string } & Outcome)[]
   datasets: DatasetCases[]
 }
 
@@ -106,6 +109,13 @@ describe('ladder', () => {
   })
 })
 
+describe('odd one out', () => {
+  it.each(golden.odd.map((c, i) => [i, c]))('synthetic tree %i deals the same set', (i, c) => {
+    const ds = makeDataset(`odd${i}`, { title: `odd${i}` }, c.tree)
+    expect(outcome(() => makeSet(ds, c.seed))).toStrictEqual(expected(c))
+  })
+})
+
 describe.each(golden.datasets.map((c) => [c.id, c] as const))('dataset %s', (id, c) => {
   const ds = dataset(id)
 
@@ -122,6 +132,10 @@ describe.each(golden.datasets.map((c) => [c.id, c] as const))('dataset %s', (id,
 
   it.each(c.game.map((r, i) => [i, r]))('round %i draws the same tree', (_, r) => {
     expect(outcome(() => getGameState(ds, r.secret, r.guesses, r.hints))).toStrictEqual(expected(r))
+  })
+
+  it('deals the same odd-one-out set from a seed', () => {
+    for (const o of c.odd) expect(outcome(() => makeSet(ds, o.seed))).toStrictEqual(expected(o))
   })
 
   it('suggests the same names in the same order', () => {

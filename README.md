@@ -51,6 +51,10 @@ node shows *which branch* the answer is on, never how deep.
 - **Bulk guessing** opens once you have reached a narrow enough group. Type a
   word, and every leaf in that group with that word in its name is guessed at
   once, each one counted.
+- **Odd one out** is a second game on the same trees: three leaves, two of
+  which share a group the third is not in. A rooted tree decides that
+  exactly, so every puzzle has one answer, and the answer is drawn as the
+  tree of the three. A set is ten, easy to hard, and has a seed like a round.
 - **Explore** has no secret: open the tree anywhere and read it. Every node has
   a popup. For maths that's its MSC topics; for animals and languages it's the
   Wikipedia summary; for chess, the position's board.
@@ -75,6 +79,7 @@ datasets when it starts, so restart it after adding one. In a terminal:
 python3 -m venv .venv && .venv/bin/pip install -e ".[test]"
 .venv/bin/treequiz list
 .venv/bin/treequiz play languages
+.venv/bin/treequiz odd cities
 .venv/bin/treequiz explore maths
 ```
 

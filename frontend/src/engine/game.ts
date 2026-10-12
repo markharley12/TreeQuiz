@@ -56,6 +56,16 @@ export function leavesOf(ds: Dataset): RawNode[] {
   return gameIndex(ds).leaves
 }
 
+/** A leaf's lineage, root first, by its label; and every node's warmth. For
+ *  the other games, which draw on the same index. */
+export function lineageOfLeaf(ds: Dataset, label: string): RawNode[] | undefined {
+  return gameIndex(ds).lineageOf.get(label)
+}
+
+export function warmthOf(ds: Dataset): Map<string, number> {
+  return gameIndex(ds).warmth
+}
+
 /** The deepest node both lineages share. */
 function lca(a: RawNode[], b: RawNode[]): RawNode {
   let result = a[0]

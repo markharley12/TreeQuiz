@@ -15,7 +15,8 @@ Eight datasets — **maths** (MSC2020, 517 fields), **languages** (Glottolog,
 415), **instruments** (Hornbostel–Sachs, 428), **animals** (TaxoQuiz's 530),
 **chess** (Lichess, 446 openings), **physics** (PhySH, 487 topics),
 **chemistry** (ChEBI, 465 chemicals), **cities** (Wikidata and Natural
-Earth, 626). Python suite 153 tests, frontend 430, both green;
+Earth, 626). Two games: the guessing round and odd one out. Python suite
+176 tests, frontend 475, both green;
 CI and Pages workflows written but **the repo has not been pushed** and has no
 GitHub remote yet. No Android build (TaxoQuiz's Capacitor setup was left out).
 
@@ -69,6 +70,24 @@ five, 1,055KB with seven, 1,127KB with eight: trim again if it passes about
 1.2MB. The cut was checked by mutation and found an old gap: a child landing
 *exactly* on its parent's warmth (`<=` against `<` in the floor) was reached by
 no case; the synthetic `C0`/`P`/`C` tree now reaches it.
+
+## Odd one out — the second game
+
+`src/treequiz/odd.py` (reference), `frontend/src/engine/odd.ts` (port),
+both in the conformance file. Three leaves; a rooted tree says exactly which
+two are closer, or that none is, so puzzles are built top-down (meeting
+node, a child for the pair, another for the odd one) and are resolved by
+construction. Difficulty is the meeting node's warmth, by thirds of the
+tree's ranking; a set of ten runs 3 easy, 4 medium, 3 hard. Meeting nodes
+are drawn **in proportion to their leaves**: drawn evenly, languages' tiny
+families made "easy" puzzles of Chechen, Ingush and Rutulian. Every choice
+is `seed.draw(key, n)` (sha256 of a key, mod n), so a seed is the whole set
+in both engines; `seed.body_of` and `draw` were factored out of `resolve`
+for it. The reveal (`oddReveal.ts`, display only) draws the three as a
+little tree: where all three meet, the pair's group, the leaves, each box
+carrying the labels it skips. Links are `?d=<id>&odd=<seed>`; the set in
+progress is `treequiz:odd:<id>`, the tally `treequiz:oddtally:<id>`, and
+`view:<id>` remembers odd one out as it does explore.
 
 ## Frontend decisions new here
 

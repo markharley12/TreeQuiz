@@ -30,7 +30,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from conftest import n  # noqa: E402
 
-from treequiz import dataset, explore, game, seed  # noqa: E402
+from treequiz import dataset, explore, game, odd, seed  # noqa: E402
 from treequiz.dataset import Ladder  # noqa: E402
 from treequiz.ladder import believed_levels, warmth_by_name  # noqa: E402
 from treequiz.tree import all_nodes, label_of, leaves  # noqa: E402
@@ -109,6 +109,25 @@ def ladder_cases() -> list:
     return out
 
 
+# Trees for the odd-one-out rules no shipped tree reaches: no puzzle at all, too
+# few leaves for ten different puzzles, and meeting nodes tied on warmth.
+ODD_TREES = [
+    n("root", None, n("a"), n("b"), n("c")),
+    n("root", None, n("g", None, n("a"), n("b")), n("c")),
+    n("root", None, n("p", None, n("p1", None, n("a"), n("b")), n("c")),
+      n("q", None, n("q1", None, n("d"), n("e")), n("f")), n("h")),
+]
+
+
+def odd_cases() -> list:
+    out = []
+    for i, tree in enumerate(ODD_TREES):
+        ds = dataset.from_tree(tree, {"title": f"odd{i}"}, f"odd{i}")
+        s = f"{seed.fingerprint(leaves(tree))}-ABCDEF"
+        out.append({"tree": tree, "seed": s, **attempt(odd.make_set, ds, s)})
+    return out
+
+
 def dataset_cases(ds: dataset.Dataset, rng: random.Random) -> dict:
     lv = leaves(ds.tree)
     labels = [label_of(x) for x in lv]
@@ -174,6 +193,8 @@ def dataset_cases(ds: dataset.Dataset, rng: random.Random) -> dict:
                       for d in (date(2026, 1, 1), date(2026, 10, 8), date(2027, 2, 28))],
         },
         "game": rounds,
+        # One set covers every tier; a set is ten puzzles, so one is enough.
+        "odd": [{"seed": s, **attempt(odd.make_set, ds, s)} for s in (f"{fp}-{bodies[1]}", "0000-000000")],
         "suggest_exclude": exclude,
         "suggest": suggest,
         "explore": {
@@ -200,6 +221,7 @@ def build() -> dict:
                           for s in ["abcd-234567", " AB CD 23 45 67 ", "ABCD234567", "ABCD-2345", "", "not a seed at all"]],
         },
         "ladder": ladder_cases(),
+        "odd": odd_cases(),
         "datasets": [dataset_cases(dataset.load(i), rng) for i in dataset.available()],
     }
 

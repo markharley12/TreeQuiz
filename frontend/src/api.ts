@@ -10,13 +10,17 @@ import { DATASETS, entryFor, loadDataset, loadInfo } from './engine/datasets'
 import { getGameState, pick, suggest } from './engine/game'
 import { lineage, search, stats, subtree } from './engine/explore'
 import { infoFor, type Info } from './engine/info'
-import { tagOf, fingerprint } from './engine/seed'
+import { tagOf, fingerprint, normalise } from './engine/seed'
+import { makeSet, pickSeed, type Puzzle } from './engine/odd'
+import { reveal, type Reveal } from './oddReveal'
 import { leavesOf } from './engine/game'
 import { matchedAliases } from './aliasHint'
 
 export type { TreeNode } from './engine/game'
 export type { ExploreNode, ExploreHit, ExploreStats, Lineage } from './engine/explore'
 export type { Info } from './engine/info'
+export type { Puzzle } from './engine/odd'
+export type { Reveal } from './oddReveal'
 import type { TreeNode } from './engine/game'
 import type { ExploreNode, ExploreHit, ExploreStats, Lineage } from './engine/explore'
 
@@ -31,6 +35,23 @@ export interface NewRound {
 export async function startRound(dataset: string, opts: { daily?: boolean; seed?: string } = {}): Promise<NewRound> {
   const round = pick(await loadDataset(dataset), { daily: opts.daily, seed: opts.seed })
   return { ...round, daily: Boolean(opts.daily) && !opts.seed }
+}
+
+export interface OddSet {
+  seed: string
+  puzzles: Puzzle[]
+}
+
+/** Deal an odd-one-out set: a new one, or the one a seed names. Rejects with a
+ *  message for the player if the seed is malformed or for another tree. */
+export async function startOddSet(dataset: string, opts: { seed?: string } = {}): Promise<OddSet> {
+  const ds = await loadDataset(dataset)
+  const seed = opts.seed ? normalise(opts.seed) : pickSeed(ds)
+  return { seed, puzzles: makeSet(ds, seed) }
+}
+
+export async function fetchOddReveal(dataset: string, puzzle: Puzzle): Promise<Reveal> {
+  return reveal(await loadDataset(dataset), puzzle)
 }
 
 export async function fetchSuggestions(dataset: string, q: string, limit = 50, exclude: string[] = []): Promise<string[]> {

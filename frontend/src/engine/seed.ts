@@ -79,12 +79,24 @@ export function normalise(seed: string): string {
   return `${cleaned.slice(0, FINGERPRINT_LEN)}-${cleaned.slice(FINGERPRINT_LEN)}`
 }
 
-export function resolve(seed: string, leaves: RawNode[]): RawNode {
+/** A seed's body, once its tag is checked against the tree. Throws for a seed
+ *  made on another tree. */
+export function bodyOf(seed: string, leaves: RawNode[]): string {
   seed = normalise(seed)
   const [fp, body] = seed.split('-')
   const expected = fingerprint(leaves)
   if (fp !== expected) {
     throw new Error(`Seed '${seed}' is for a different dataset (its tag is ${fp}, this one is ${expected}).`)
   }
-  return leaves[Number(digestInt(`treequiz-seed:${body}`) % BigInt(leaves.length))]
+  return body
+}
+
+/** A number in 0..n-1 from a hash of `key`: the one source of chance a seed
+ *  may use, since both engines must draw the same. */
+export function draw(key: string, n: number): number {
+  return Number(digestInt(key) % BigInt(n))
+}
+
+export function resolve(seed: string, leaves: RawNode[]): RawNode {
+  return leaves[draw(`treequiz-seed:${bodyOf(seed, leaves)}`, leaves.length)]
 }

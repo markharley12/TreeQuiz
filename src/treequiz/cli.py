@@ -3,6 +3,7 @@
     treequiz list
     treequiz validate [ID ...] [--all]
     treequiz play ID [--seed SEED | --daily]
+    treequiz odd ID [--seed SEED | --daily]           # odd one out
     treequiz state ID SECRET [GUESS ...] [--hints N]    # the raw JSON
     treequiz explore ID [ROOT] [--budget N]
 """
@@ -12,7 +13,7 @@ import argparse
 import json
 import sys
 
-from . import dataset, explore, game
+from . import dataset, explore, game, odd
 from .validate import validate
 
 
@@ -120,6 +121,32 @@ def cmd_play(args: argparse.Namespace) -> int:
             return 0
 
 
+def cmd_odd(args: argparse.Namespace) -> int:
+    ds = dataset.load(args.id)
+    seed = args.seed or odd.pick_seed(ds, daily=args.daily)
+    puzzles = odd.make_set(ds, seed)
+    print(f"{ds.title} — odd one out. Seed {seed}")
+    print("Two of each three share a group the third is not in. Type 1, 2 or 3.\n")
+    right = 0
+    for i, p in enumerate(puzzles, 1):
+        print(f"{i}/{len(puzzles)}  " + "   ".join(f"{k}. {c}" for k, c in enumerate(p["choices"], 1)))
+        while True:
+            try:
+                raw = input("> ").strip()
+            except EOFError:
+                print()
+                return 0
+            if raw in ("1", "2", "3"):
+                break
+        ok = odd.check(p, p["choices"][int(raw) - 1])
+        right += ok
+        a, b = p["pair"]
+        print(f"  {'Right' if ok else 'No'}: {a} and {b} share {p['group']['label']}; "
+              f"{p['odd']} meets them only at {p['shared']['label']}.\n")
+    print(f"{right} of {len(puzzles)}.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="treequiz", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -134,6 +161,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--seed")
     p.add_argument("--daily", action="store_true")
     p.set_defaults(fn=cmd_play)
+    o = sub.add_parser("odd")
+    o.add_argument("id")
+    o.add_argument("--seed")
+    o.add_argument("--daily", action="store_true")
+    o.set_defaults(fn=cmd_odd)
     s = sub.add_parser("state")
     s.add_argument("id")
     s.add_argument("secret")

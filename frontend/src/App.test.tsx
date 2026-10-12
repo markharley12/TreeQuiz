@@ -17,11 +17,15 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 const startRound = vi.fn()
 const fetchGameState = vi.fn()
 const datasetForSeed = vi.fn()
+const startOddSet = vi.fn()
+const fetchOddReveal = vi.fn()
 
 vi.mock('./api', () => ({
   startRound: (...a: unknown[]) => startRound(...a),
   fetchGameState: (...a: unknown[]) => fetchGameState(...a),
   datasetForSeed: (...a: unknown[]) => datasetForSeed(...a),
+  startOddSet: (...a: unknown[]) => startOddSet(...a),
+  fetchOddReveal: (...a: unknown[]) => fetchOddReveal(...a),
 }))
 
 // The trees draw with react-d3-tree; what they draw is checked by eye. Stubbed
@@ -90,6 +94,13 @@ function closeTree(lcaName: string, lcaRank: string, lcaWarmth: number, canHint 
   }] }
 }
 
+/** Ten of the same puzzle: tiger and lion share a genus, the wolf does not. */
+const ODD_SET = Array.from({ length: 10 }, (_, i) => ({
+  choices: ['tiger', 'grey wolf', 'lion'], odd: 'grey wolf', pair: ['tiger', 'lion'],
+  group: { name: 'Panthera', label: 'Panthera', rank: 'Genus', warmth: 0.8 },
+  shared: { name: 'Carnivora', label: 'Carnivora', rank: 'Order', warmth: 0.5 }, tier: i < 3 ? 0 : i < 7 ? 1 : 2,
+}))
+
 async function renderApp() {
   const { default: App } = await import('./App')
   return render(<App />)
@@ -103,6 +114,8 @@ beforeEach(() => {
   startRound.mockResolvedValue({ secret: 'lion', seed: 'RZVM-X6N69Q', daily: false })
   fetchGameState.mockResolvedValue(TREE)
   datasetForSeed.mockResolvedValue(null)
+  startOddSet.mockImplementation(async (_: string, opts: { seed?: string }) => ({ seed: opts.seed ?? 'RZVM-0DD5E7', puzzles: ODD_SET }))
+  fetchOddReveal.mockReturnValue(new Promise(() => {}))
   vi.resetModules()
 })
 
@@ -559,5 +572,59 @@ describe('the daily record', () => {
     fireEvent.click(screen.getByRole('button', { name: /resume today.s animal/i }))
     expect(await screen.findByText('Tiger')).toBeTruthy()
     expect(startRound).not.toHaveBeenCalled()
+  })
+})
+
+describe('odd one out', () => {
+  const arriveAt = (search: string) => window.history.replaceState(null, '', `/${search}`)
+  afterEach(() => arriveAt(''))
+
+  it('deals a set from the front page, and marks an answer', async () => {
+    await renderApp()
+    fireEvent.click(screen.getByRole('button', { name: /odd one out/i }))
+    expect(await screen.findByText('RZVM-0DD5E7')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /grey wolf/i }))
+    expect(await screen.findByText('Right.')).toBeTruthy()
+    expect(JSON.parse(localStorage.getItem('treequiz:odd:animals')!)).toEqual({ seed: 'RZVM-0DD5E7', answers: ['grey wolf'] })
+  })
+
+  it('says which it was after a wrong pick', async () => {
+    await renderApp()
+    fireEvent.click(screen.getByRole('button', { name: /odd one out/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /^3\s*lion/i }))
+    expect(await screen.findByText(/not quite — it was grey wolf/i)).toBeTruthy()
+  })
+
+  it("opens a link's set, and comes back to it on a reload", async () => {
+    arriveAt('?d=animals&odd=RZVM-ABCDEF')
+    await renderApp()
+    expect(await screen.findByText('RZVM-ABCDEF')).toBeTruthy()
+    expect(startOddSet).toHaveBeenCalledWith(DATASET, { seed: 'RZVM-ABCDEF' })
+    expect(window.location.search).toBe('')
+    cleanup()
+    startOddSet.mockClear()
+    await renderApp()
+    expect(await screen.findByText('RZVM-ABCDEF')).toBeTruthy()
+    expect(startOddSet).toHaveBeenCalledWith(DATASET, { seed: 'RZVM-ABCDEF' })
+  })
+
+  it('scores a finished set and counts it once', async () => {
+    localStorage.setItem('treequiz:odd:animals', JSON.stringify({ seed: 'RZVM-0DD5E7', answers: [...Array(9).fill('grey wolf'), 'lion'] }))
+    localStorage.setItem('treequiz:view:animals', 'odd')
+    await renderApp()
+    expect(await screen.findByText('9 of 10')).toBeTruthy()
+    expect(screen.getByLabelText('Your marks').textContent).toBe('✅'.repeat(9) + '❌')
+    cleanup()
+    await renderApp()
+    await screen.findByText('9 of 10')
+    expect(JSON.parse(localStorage.getItem('treequiz:oddtally:animals')!)).toMatchObject({ sets: 1, right: 9, best: 9 })
+  })
+
+  it('reports a seed from another tree instead of dealing nothing', async () => {
+    startOddSet.mockRejectedValueOnce(new Error("Seed '0000-000000' is for a different dataset"))
+    arriveAt('?odd=0000-000000')
+    await renderApp()
+    expect(await screen.findByText(/different dataset/i)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /deal a new set/i })).toBeTruthy()
   })
 })

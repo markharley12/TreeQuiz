@@ -11,6 +11,7 @@ import GameTree from './components/GameTree'
 import ExploreTree from './components/ExploreTree'
 import SettingsMenu from './components/SettingsMenu'
 import DatasetPicker from './components/DatasetPicker'
+import OddOneOut from './components/OddOneOut'
 import StatsDialog from './components/StatsDialog'
 import { datasetForSeed, fetchGameState, startRound, type TreeNode } from './api'
 import { useSettings, setSetting } from './settings'
@@ -23,10 +24,12 @@ import type { Manifest } from './engine/tree'
 import { readLink, shareBase, shareLink, withoutLink } from './shareLink'
 import { useSharer } from './sharer'
 import { guessWarmths, readDailies, recordDaily, shareText } from './results'
-import { bulkUnlock, noun, shortTitle } from './words'
+import { bulkUnlock, noun, nounPlural, shortTitle } from './words'
 
-type Mode = 'daily' | 'practice' | 'explore'
-type RoundMode = Exclude<Mode, 'explore'>
+type Mode = 'daily' | 'practice' | 'explore' | 'odd'
+type RoundMode = Exclude<Mode, 'explore' | 'odd'>
+/** The views a tree can be left in and come back to, beside a round. */
+type View = Extract<Mode, 'explore' | 'odd'>
 
 interface SavedSession {
   mode: RoundMode
@@ -113,15 +116,17 @@ interface Boot {
  *  another tree — resumes a round that is already that seed, asks before
  *  replacing one in progress, and otherwise starts fresh with nothing restored,
  *  or the old round's tree request would race the new one's start. */
-function readBoot(dataset: string, carried: string | null, landing: boolean): Boot {
+function readBoot(dataset: string, carried: string | null, landing: boolean, odd: string | null): Boot {
   const saved = readSession(dataset)
+  if (odd !== null) return { saved, mode: 'odd', linked: null, ask: false }
   if (carried !== null) {
     if (saved && sameSeed(saved.seed, carried)) return { saved, mode: saved.mode, linked: null, ask: false }
     if (inProgress(saved)) return { saved, mode: saved.mode, linked: carried, ask: true }
     return { saved: null, mode: null, linked: carried, ask: false }
   }
   if (landing) return { saved, mode: null, linked: null, ask: false }
-  if (readView(dataset) === 'explore') return { saved, mode: 'explore', linked: null, ask: false }
+  const view = readView(dataset)
+  if (view === 'explore' || view === 'odd') return { saved, mode: view, linked: null, ask: false }
   return { saved, mode: saved?.mode ?? null, linked: null, ask: false }
 }
 
@@ -130,12 +135,17 @@ interface Nav {
   landing: boolean
   /** A seed to start on arrival. */
   seed: string | null
+  /** An odd-one-out set's seed, from a link. */
+  odd?: string | null
 }
 
 export default function App() {
   const { dataset } = useSettings()
   // The link's seed goes to the first round only; later switches carry their own.
-  const [nav, setNav] = useState<Nav>(() => ({ landing: false, seed: readLink(window.location.search).seed }))
+  const [nav, setNav] = useState<Nav>(() => {
+    const link = readLink(window.location.search)
+    return { landing: false, seed: link.seed, odd: link.odd }
+  })
   const manifest = entryFor(dataset)?.manifest
 
   useEffect(() => {
@@ -161,7 +171,7 @@ interface RoundProps {
 }
 
 function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
-  const [boot] = useState(() => readBoot(dataset, nav.seed, nav.landing))
+  const [boot] = useState(() => readBoot(dataset, nav.seed, nav.landing, nav.odd ?? null))
   const saved = boot.saved
   const [mode, setMode] = useState<Mode | null>(boot.mode)
   // The mode of the round in memory, which the front page can resume.
@@ -195,13 +205,14 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
   const [loading, setLoading] = useState(false)
   const [treeLoaded, setTreeLoaded] = useState(false)
   const leaf = noun(manifest)
+  const plural = nounPlural(manifest)
 
   // On mount: take a link out of the address, so a reload resumes the round
   // rather than offering to restart it, and start a carried round if nothing
   // needs asking first.
   useEffect(() => {
     const link = readLink(window.location.search)
-    if (link.seed !== null || link.dataset !== null) {
+    if (link.seed !== null || link.dataset !== null || link.odd !== null) {
       window.history.replaceState(window.history.state, '', withoutLink(window.location.href))
     }
     if (boot.linked !== null && !boot.ask) void startGame('practice', boot.linked)
@@ -230,7 +241,7 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
     }
   }, [dataset, roundMode, secret, seed, guesses, won, revealed, hints, hintPoints])
   useEffect(() => {
-    writeStorage(viewKey(dataset), mode === 'explore' ? 'explore' : null)
+    writeStorage(viewKey(dataset), mode === 'explore' || mode === 'odd' ? mode satisfies View : null)
   }, [dataset, mode])
 
   // Keep a finished daily for the stats — once its tree is in, since the
@@ -390,13 +401,16 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
           <Button variant="outlined" size="large" onClick={() => startGame('practice')}>
             Practice
           </Button>
+          <Button variant="outlined" size="large" onClick={() => setMode('odd')}>
+            Odd one out
+          </Button>
           <Button variant="outlined" size="large" onClick={() => setMode('explore')}>
             Explore
           </Button>
         </Stack>
         <Typography variant="body2" sx={{ mt: 1.5, textAlign: 'center', color: 'text.secondary' }}>
-          Explore has no secret and nothing to guess — open the tree wherever you
-          like and read your way around it.
+          Odd one out is ten quick puzzles: of three {plural}, which two share a
+          group the third is not in? Explore has no secret and nothing to guess.
           {' '}<Link component="button" variant="body2" onClick={() => setStatsOpen(true)} sx={{ verticalAlign: 'baseline' }}>Your stats</Link>
         </Typography>
         <StatsDialog open={statsOpen} onClose={() => setStatsOpen(false)} dataset={dataset} title={shortTitle(manifest)} />
@@ -436,6 +450,13 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
 
         <Sources manifest={manifest} />
       </Box>
+    </Box>
+  )
+
+  if (mode === 'odd') return (
+    <Box sx={{ p: PAGE_PAD, height: '100dvh', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', '& > *': { flexShrink: 0 } }}>
+      {header('Odd one out')}
+      <OddOneOut dataset={dataset} title={shortTitle(manifest)} plural={plural} linkSeed={nav.odd ?? null} />
     </Box>
   )
 

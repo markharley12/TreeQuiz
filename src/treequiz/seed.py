@@ -74,8 +74,9 @@ def normalise(seed: str) -> str:
     return f"{cleaned[:FINGERPRINT_LEN]}-{cleaned[FINGERPRINT_LEN:]}"
 
 
-def resolve(seed: str, leaves: list[dict]) -> dict:
-    """The leaf a seed names. Raises ValueError for a seed made on another tree."""
+def body_of(seed: str, leaves: list[dict]) -> str:
+    """A seed's body, once its tag is checked against the tree. Raises
+    ValueError for a seed made on another tree."""
     seed = normalise(seed)
     fp, body = seed.split("-")
     expected = fingerprint(leaves)
@@ -84,5 +85,15 @@ def resolve(seed: str, leaves: list[dict]) -> dict:
             f"Seed '{seed}' is for a different dataset (its tag is {fp}, "
             f"this one is {expected})."
         )
-    index = int.from_bytes(hashlib.sha256(f"treequiz-seed:{body}".encode()).digest(), "big")
-    return leaves[index % len(leaves)]
+    return body
+
+
+def draw(key: str, n: int) -> int:
+    """A number in 0..n-1 from a hash of `key`: the one source of chance a
+    seed may use, since both engines must draw the same."""
+    return int.from_bytes(hashlib.sha256(key.encode()).digest(), "big") % n
+
+
+def resolve(seed: str, leaves: list[dict]) -> dict:
+    """The leaf a seed names. Raises ValueError for a seed made on another tree."""
+    return leaves[draw(f"treequiz-seed:{body_of(seed, leaves)}", len(leaves))]
