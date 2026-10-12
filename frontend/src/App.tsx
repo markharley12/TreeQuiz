@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { lazy, Suspense, useState, useEffect } from 'react'
 import {
   Box, Typography, Chip, Stack, CircularProgress, Button, TextField, Tooltip, Alert,
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, IconButton, Link,
@@ -7,8 +7,6 @@ import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined'
 import { useNarrow } from './media'
 import GuessInput from './components/GuessInput'
 import GuessList from './components/GuessList'
-import GameTree from './components/GameTree'
-import ExploreTree from './components/ExploreTree'
 import SettingsMenu from './components/SettingsMenu'
 import DatasetPicker from './components/DatasetPicker'
 import OddOneOut from './components/OddOneOut'
@@ -25,6 +23,12 @@ import { readLink, shareBase, shareLink, withoutLink } from './shareLink'
 import { useSharer } from './sharer'
 import { guessWarmths, readDailies, recordDaily, shareText } from './results'
 import { bulkUnlock, noun, nounPlural, shortTitle } from './words'
+
+// The two trees are drawn with react-d3-tree and d3, a third of the bundle,
+// which the front page and odd one out never need: loaded when first drawn.
+const GameTree = lazy(() => import('./components/GameTree'))
+const ExploreTree = lazy(() => import('./components/ExploreTree'))
+const treeFallback = <Box sx={{ display: 'flex', justifyContent: 'center', mt: 6 }}><CircularProgress /></Box>
 
 type Mode = 'daily' | 'practice' | 'explore' | 'odd'
 type RoundMode = Exclude<Mode, 'explore' | 'odd'>
@@ -463,7 +467,7 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
   if (mode === 'explore') return (
     <Box sx={{ p: PAGE_PAD, height: '100dvh', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', '& > *': { flexShrink: 0 } }}>
       {header('Explore')}
-      <ExploreTree />
+      <Suspense fallback={treeFallback}><ExploreTree /></Suspense>
     </Box>
   )
 
@@ -563,11 +567,13 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
       <GuessList guesses={guesses} secret={secret} />
 
       <Box sx={{ mt: { xs: 1, sm: 2 }, ...TREE_BLEED, flex: '1 0 0', minHeight: { xs: 300, sm: 400 } }}>
-        <GameTree
-          treeData={treeData}
-          focusLabel={hintFocus ? '???' : guesses[guesses.length - 1] ?? null}
-          newestLabel={guesses[guesses.length - 1] ?? null}
-        />
+        <Suspense fallback={treeFallback}>
+          <GameTree
+            treeData={treeData}
+            focusLabel={hintFocus ? '???' : guesses[guesses.length - 1] ?? null}
+            newestLabel={guesses[guesses.length - 1] ?? null}
+          />
+        </Suspense>
       </Box>
 
       <StatsDialog open={statsOpen} onClose={() => setStatsOpen(false)} dataset={dataset} title={shortTitle(manifest)} />
