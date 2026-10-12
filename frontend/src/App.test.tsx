@@ -645,6 +645,28 @@ describe('odd one out', () => {
     expect(startOddSet).toHaveBeenCalledWith(DATASET, expect.objectContaining({ seed: 'RZVM-0DD5E7' }))
   })
 
+  it("deals a link's set once: going home and back resumes the set in progress", async () => {
+    arriveAt('?d=animals&odd=RZVM-ABCDEF')
+    await renderApp()
+    await screen.findByText('RZVM-ABCDEF')
+    fireEvent.click(screen.getByRole('button', { name: /new set/i }))
+    expect(await screen.findByText('RZVM-0DD5E7')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /^home$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /odd one out/i }))
+    expect(await screen.findByText('RZVM-0DD5E7')).toBeTruthy()
+    expect(startOddSet).toHaveBeenLastCalledWith(DATASET, expect.objectContaining({ seed: 'RZVM-0DD5E7' }))
+  })
+
+  it("does not count today's set again when it is reopened", async () => {
+    localStorage.setItem('treequiz:odddaily:animals', JSON.stringify({ [today()]: {
+      seed: 'RZVM-0DD5E7', answers: Array(10).fill('grey wolf'), right: 10 } }))
+    localStorage.setItem('treequiz:oddtally:animals', JSON.stringify({ sets: 2, right: 15, best: 10, last: 'RZVM-OTHER1' }))
+    await renderApp()
+    fireEvent.click(screen.getByRole('button', { name: /odd one out/i }))
+    expect(await screen.findByText('10 of 10')).toBeTruthy()
+    expect(JSON.parse(localStorage.getItem('treequiz:oddtally:animals')!)).toMatchObject({ sets: 2, right: 15 })
+  })
+
   it('reports a seed from another tree instead of dealing nothing', async () => {
     startOddSet.mockRejectedValueOnce(new Error("Seed '0000-000000' is for a different dataset"))
     arriveAt('?odd=0000-000000')

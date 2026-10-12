@@ -38,6 +38,8 @@ interface Props {
 interface Deal {
   seed?: string
   resumed?: string[]
+  /** Reopened from the day's record, so already counted in the tally. */
+  counted?: boolean
   day?: string
 }
 
@@ -64,7 +66,7 @@ export default function OddOneOut({ dataset, title, plural, linkSeed }: Props) {
   const resultSharer = useSharer()
   const today = utcToday()
 
-  function show(next: OddSet, resumed: string[], forDay: string | null) {
+  function show(next: OddSet, resumed: string[], forDay: string | null, counted = false) {
     setError(null)
     setReveal(null)
     setSet(next)
@@ -72,20 +74,20 @@ export default function OddOneOut({ dataset, title, plural, linkSeed }: Props) {
     setShown(Math.min(resumed.length, SET_SIZE))
     setDay(forDay)
     writeOddSession(dataset, { seed: next.seed, answers: resumed, ...(forDay ? { day: forDay } : {}) })
-    if (resumed.length >= SET_SIZE) finish(next, resumed, forDay)
+    if (resumed.length >= SET_SIZE && !counted) finish(next, resumed, forDay)
   }
 
   const failed = (e: unknown) => setError(e instanceof Error ? e.message : 'Could not deal that set')
 
   function deal(how: Deal = {}) {
     startOddSet(dataset, { seed: how.seed, daily: how.day !== undefined && !how.seed })
-      .then((next) => show(next, how.resumed ?? [], how.day ?? null), failed)
+      .then((next) => show(next, how.resumed ?? [], how.day ?? null, how.counted), failed)
   }
 
   /** Today's set: the record of it once finished, else a fresh deal. */
   function todays(): Deal {
     const done = readOddDailies(dataset)[today]
-    return done ? { seed: done.seed, resumed: done.answers, day: today } : { day: today }
+    return done ? { seed: done.seed, resumed: done.answers, day: today, counted: true } : { day: today }
   }
 
   // On arrival: a link's set; else a set in progress; else today's set while
@@ -103,7 +105,7 @@ export default function OddOneOut({ dataset, title, plural, linkSeed }: Props) {
         : todays()
     let cancelled = false
     startOddSet(dataset, { seed: how.seed, daily: how.day !== undefined && !how.seed }).then(
-      (next) => { if (!cancelled) show(next, how.resumed ?? [], how.day ?? null) },
+      (next) => { if (!cancelled) show(next, how.resumed ?? [], how.day ?? null, how.counted) },
       (e) => { if (!cancelled) failed(e) },
     )
     return () => { cancelled = true }

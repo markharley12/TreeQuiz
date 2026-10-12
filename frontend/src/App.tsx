@@ -195,6 +195,9 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
   // When a rejected seed belongs to another tree: which, to offer playing it there.
   const [seedElsewhere, setSeedElsewhere] = useState<{ id: string; seed: string } | null>(null)
   const [pendingLink, setPendingLink] = useState<string | null>(boot.ask ? boot.linked : null)
+  // A link's odd-one-out set, dealt the first time odd one out opens and then
+  // forgotten: coming back to it later resumes whatever set is in progress.
+  const [oddLink, setOddLink] = useState<string | null>(nav.odd ?? null)
   const [guesses, setGuesses] = useState<string[]>(saved?.guesses ?? [])
   const [treeData, setTreeData] = useState<TreeNode | null>(null)
   const [won, setWon] = useState(saved?.won ?? false)
@@ -333,6 +336,7 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
   // Back to the front page. The round stays saved, and the front page offers it.
   function goHome() {
     setMode(null)
+    setOddLink(null)
   }
 
   function resume() {
@@ -460,7 +464,7 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
   if (mode === 'odd') return (
     <Box sx={{ p: PAGE_PAD, height: '100dvh', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', '& > *': { flexShrink: 0 } }}>
       {header('Odd one out')}
-      <OddOneOut dataset={dataset} title={shortTitle(manifest)} plural={plural} linkSeed={nav.odd ?? null} />
+      <OddOneOut dataset={dataset} title={shortTitle(manifest)} plural={plural} linkSeed={oddLink} />
     </Box>
   )
 
