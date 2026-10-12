@@ -13,6 +13,11 @@ import type { Puzzle } from './engine/odd'
 import { labelOf, type ChainStyle, type Dataset, type RawNode } from './engine/tree'
 import { joinSteps } from './gameLayout'
 
+/** The most skipped labels a box shows, nearest first kept: eleven ranks above
+ *  Boreoeutheria were four lines of small print over a one-word box. Moves are
+ *  kept whole, since a line of moves is what a chess position is. */
+export const ABOVE_MAX = 3
+
 export interface Box {
   /** The node's name, for its popup. */
   name: string
@@ -44,7 +49,8 @@ function box(ds: Dataset, lineage: RawNode[], from: number, at: number, style: C
   // Steps of a path read as one path: a position is named by every move since
   // the box above; a leaf keeps its own name, with those moves under it.
   const text = stepwise && !leaf ? joinSteps([...skipped, labelOf(node)], style) : labelOf(node)
-  const above = stepwise ? (leaf ? joinSteps(skipped, style) : '') : skipped.join(' › ')
+  const near = skipped.length > ABOVE_MAX ? ['…', ...skipped.slice(-ABOVE_MAX)] : skipped
+  const above = stepwise ? (leaf ? joinSteps(skipped, style) : '') : near.join(' › ')
   const full = stepwise && !leaf && at > 0 ? joinSteps(lineage.slice(1, at + 1).map(labelOf), style) : labelOf(node)
   return { name: node.name, text, above, full, rank: node.rank ?? '', warmth: warmthOf(ds).get(node.name)! }
 }

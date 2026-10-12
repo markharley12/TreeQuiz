@@ -31,7 +31,7 @@ describe('the reveal', () => {
   it('shows the root when that is where the three meet', () => {
     const r = reveal(ds, puzzle(['Tokyo', 'Osaka'], 'Paris', 'Asia', 'World'))
     expect(r.shared).toMatchObject({ text: 'World', above: '' })
-    expect(r.odd.above).toBe('Europe › Western Europe › France › Île-de-France')
+    expect(r.odd.above).toBe('… › Western Europe › France › Île-de-France')
   })
 
   it('says why in one sentence', () => {

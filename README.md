@@ -199,6 +199,22 @@ Delayed Alapin share 2.Nf3, then turn off with 2…e6. The Najdorf shares all th
 way to 5.Nc3, and only Black's fifth move tells it from the answer. Every
 position's popup draws its board.
 
+## Odd one out
+
+The second game asks the tree a different question. Of three leaves, which
+two share a group the third is not in? A rooted tree answers that exactly:
+either one pair meets below where all three meet, or all three meet at once
+and no pair is closer. Puzzles are only ever of the first kind, so each has
+one right answer and no judgement goes into it.
+
+![Odd one out: the rabbit is closer to the orangutan than to the sheep](docs/images/odd.png)
+
+Above, the rabbit and the orangutan share Euarchontoglires, and the sheep
+joins them only at Boreoeutheria, so the sheep is the odd one out. Most
+people guess the orangutan. A set is ten puzzles, getting harder as the
+place where all three meet gets more specific. Each answer is drawn as the
+tree of the three. Every day has its own set, the same for everyone.
+
 ## Layout
 
 ```
