@@ -7,7 +7,7 @@ import json
 
 import pytest
 
-from treequiz import dataset, explore, game, odd
+from treequiz import dataset, explore, game, lineup, odd
 
 
 @pytest.fixture(autouse=True)
@@ -16,11 +16,13 @@ def _fresh_caches():
     game.clear_cache()
     explore.clear_cache()
     odd.clear_cache()
+    lineup.clear_cache()
     yield
     dataset.clear_cache()
     game.clear_cache()
     explore.clear_cache()
     odd.clear_cache()
+    lineup.clear_cache()
 
 
 def n(name, rank=None, *children, **extra) -> dict:

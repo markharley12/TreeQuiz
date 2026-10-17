@@ -36,3 +36,20 @@ def test_a_round_on_stdin(datasets_dir, monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "You got it in 1 with 1 hints" in out
     assert "???" in out   # the hint drew the marker
+
+
+def test_a_line_up_on_stdin_scores_each_order(datasets_dir, monkeypatch, capsys):
+    from treequiz import lineup
+    datasets_dir("zoo", ZOO, {"title": "Zoo", "noun": "animal", "ladder": ZOO_LADDER})
+    ds = dataset.load("zoo")
+    s = lineup.pick_seed(ds)
+    puzzles = lineup.make_set(ds, s)
+    # The first in the right order, typed after a malformed try; the rest
+    # in the order shown.
+    right = "".join(str(puzzles[0]["choices"].index(o) + 1) for o in puzzles[0]["order"])
+    monkeypatch.setattr("sys.stdin", io.StringIO("12\n" + right + "\n" + "1234\n" * 4))
+    assert cli.main(["lineup", "zoo", "--seed", s]) == 0
+    out = capsys.readouterr().out
+    assert "4 of 4 in place" in out
+    total = 4 + sum(lineup.score(p, p["choices"]) for p in puzzles[1:])
+    assert f"{total} of 20." in out

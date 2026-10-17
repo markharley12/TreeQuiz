@@ -30,7 +30,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from conftest import n  # noqa: E402
 
-from treequiz import dataset, explore, game, odd, seed  # noqa: E402
+from treequiz import dataset, explore, game, lineup, odd, seed  # noqa: E402
 from treequiz.dataset import Ladder  # noqa: E402
 from treequiz.ladder import believed_levels, warmth_by_name  # noqa: E402
 from treequiz.tree import all_nodes, label_of, leaves  # noqa: E402
@@ -128,6 +128,26 @@ def odd_cases() -> list:
     return out
 
 
+LINEUP_TREES = [
+    # No leaf has four levels: the error.
+    n("root", None, n("g", None, n("a"), n("b")), n("c")),
+    # Two targets only, so the set repeats.
+    n("r", None, n("a"), n("g1", None, n("b"), n("g2", None, n("c"), n("g3", None, n("d"), n("e"))))),
+    # A pass-through above the levels, and a root with one other leaf.
+    n("r", None, n("solo", None, n("x", None, n("a"), n("y", None, n("b"), n("z", None, n("c"), n("w", None, n("d"), n("e")))))),
+      n("f")),
+]
+
+
+def lineup_cases() -> list:
+    out = []
+    for i, tree in enumerate(LINEUP_TREES):
+        ds = dataset.from_tree(tree, {"title": f"lineup{i}"}, f"lineup{i}")
+        s = f"{seed.fingerprint(leaves(tree))}-ABCDEF"
+        out.append({"tree": tree, "seed": s, **attempt(lineup.make_set, ds, s)})
+    return out
+
+
 def dataset_cases(ds: dataset.Dataset, rng: random.Random) -> dict:
     lv = leaves(ds.tree)
     labels = [label_of(x) for x in lv]
@@ -198,6 +218,9 @@ def dataset_cases(ds: dataset.Dataset, rng: random.Random) -> dict:
         "game": rounds,
         # One set covers every tier; a set is ten puzzles, so one is enough.
         "odd": [{"seed": s, **attempt(odd.make_set, ds, s)} for s in (f"{fp}-{bodies[1]}", "0000-000000")],
+        # A set reaches every tier; a wrong seed is refused by the same code
+        # as odd one out's, above.
+        "lineup": [{"seed": s, **attempt(lineup.make_set, ds, s)} for s in (f"{fp}-{bodies[2]}",)],
         "suggest_exclude": exclude,
         "suggest": suggest,
         "explore": {
@@ -225,6 +248,7 @@ def build() -> dict:
         },
         "ladder": ladder_cases(),
         "odd": odd_cases(),
+        "lineup": lineup_cases(),
         "datasets": [dataset_cases(dataset.load(i), rng) for i in dataset.available()],
     }
 

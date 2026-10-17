@@ -4,6 +4,7 @@
     treequiz validate [ID ...] [--all]
     treequiz play ID [--seed SEED | --daily]
     treequiz odd ID [--seed SEED | --daily]           # odd one out
+    treequiz lineup ID [--seed SEED | --daily]        # line-up
     treequiz state ID SECRET [GUESS ...] [--hints N]    # the raw JSON
     treequiz explore ID [ROOT] [--budget N]
 """
@@ -13,7 +14,7 @@ import argparse
 import json
 import sys
 
-from . import dataset, explore, game, odd
+from . import dataset, explore, game, lineup, odd
 from .validate import validate
 
 
@@ -147,6 +148,31 @@ def cmd_odd(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_lineup(args: argparse.Namespace) -> int:
+    ds = dataset.load(args.id)
+    seed = args.seed or lineup.pick_seed(ds, daily=args.daily)
+    puzzles = lineup.make_set(ds, seed)
+    print(f"{ds.title} — line-up. Seed {seed}")
+    print("Put the four in order of kinship to the first, nearest first: type their numbers, as 3142.\n")
+    points = 0
+    for i, p in enumerate(puzzles, 1):
+        print(f"{i}/{len(puzzles)}  {p['target']}:  " + "   ".join(f"{k}. {c}" for k, c in enumerate(p["choices"], 1)))
+        while True:
+            try:
+                raw = input("> ").strip()
+            except EOFError:
+                print()
+                return 0
+            if sorted(raw) == ["1", "2", "3", "4"]:
+                break
+        got = lineup.score(p, [p["choices"][int(k) - 1] for k in raw])
+        points += got
+        print(f"  {got} of 4 in place. " + "; ".join(
+            f"{o} meets it at {m['label']}" for o, m in zip(p["order"], p["meets"])) + ".\n")
+    print(f"{points} of {lineup.OPTIONS * len(puzzles)}.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="treequiz", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -166,6 +192,11 @@ def main(argv: list[str] | None = None) -> int:
     o.add_argument("--seed")
     o.add_argument("--daily", action="store_true")
     o.set_defaults(fn=cmd_odd)
+    lu = sub.add_parser("lineup")
+    lu.add_argument("id")
+    lu.add_argument("--seed")
+    lu.add_argument("--daily", action="store_true")
+    lu.set_defaults(fn=cmd_lineup)
     s = sub.add_parser("state")
     s.add_argument("id")
     s.add_argument("secret")
