@@ -16,6 +16,7 @@ import { bodyForDate, fingerprint, normalise, resolve } from './seed'
 import { getGameState, leavesOf, pick, suggest } from './game'
 import { lineage, search, stats, subtree } from './explore'
 import { makeSet } from './odd'
+import { makeSet as makeLineUps } from './lineup'
 import { labelOf, ladderFrom, makeDataset, type Dataset, type LadderSpec, type Manifest, type RawNode } from './tree'
 
 type Outcome = { result?: unknown; error?: string }
@@ -30,6 +31,7 @@ interface DatasetCases {
   }
   game: ({ secret: string; guesses: string[]; hints: number } & Outcome)[]
   odd: ({ seed: string } & Outcome)[]
+  lineup: ({ seed: string } & Outcome)[]
   suggest_exclude: string[]
   suggest: { q: string; limit: number; excluding: boolean; result: string[] }[]
   explore: {
@@ -49,6 +51,7 @@ interface Golden {
   }
   ladder: { ladder: LadderSpec | null; tree: RawNode; believed: Record<string, number | null>; warmth: Record<string, number> }[]
   odd: ({ tree: RawNode; seed: string } & Outcome)[]
+  lineup: ({ tree: RawNode; seed: string } & Outcome)[]
   datasets: DatasetCases[]
 }
 
@@ -116,6 +119,13 @@ describe('odd one out', () => {
   })
 })
 
+describe('line-up', () => {
+  it.each(golden.lineup.map((c, i) => [i, c]))('synthetic tree %i deals the same set', (i, c) => {
+    const ds = makeDataset(`lineup${i}`, { title: `lineup${i}` }, c.tree)
+    expect(outcome(() => makeLineUps(ds, c.seed))).toStrictEqual(expected(c))
+  })
+})
+
 describe.each(golden.datasets.map((c) => [c.id, c] as const))('dataset %s', (id, c) => {
   const ds = dataset(id)
 
@@ -136,6 +146,10 @@ describe.each(golden.datasets.map((c) => [c.id, c] as const))('dataset %s', (id,
 
   it('deals the same odd-one-out set from a seed', () => {
     for (const o of c.odd) expect(outcome(() => makeSet(ds, o.seed))).toStrictEqual(expected(o))
+  })
+
+  it('deals the same line-up set from a seed', () => {
+    for (const o of c.lineup) expect(outcome(() => makeLineUps(ds, o.seed))).toStrictEqual(expected(o))
   })
 
   it('suggests the same names in the same order', () => {
