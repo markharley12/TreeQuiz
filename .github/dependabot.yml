@@ -1,5 +1,5 @@
 # Monthly, grouped, majors on their own — TaxoQuiz's arrangement. Nothing merges
-# by itself, and merging to master redeploys the website.
+# by itself, and merging to main redeploys the website.
 version: 2
 updates:
   - package-ecosystem: github-actions

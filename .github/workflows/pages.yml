@@ -1,14 +1,13 @@
 # Publishes the frontend to GitHub Pages. The game runs in the browser
 # (frontend/src/engine/), so there is no server to deploy — only files. The
-# tests run first, so a broken master never replaces a working site.
+# tests run first, so a broken main never replaces a working site.
 #
 # Pages has to be switched on once for the repository, with the source set to
 # GitHub Actions: `gh api -X POST repos/<owner>/TreeQuiz/pages -f build_type=workflow`.
 name: Pages
 
 on:
-  push:
-    branches: [master]
+  # Manual only for now: Pages is off while the repo is private.
   workflow_dispatch:
 
 # One deploy at a time, never cancelled mid-flight: a half-published site is
