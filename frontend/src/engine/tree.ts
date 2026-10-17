@@ -17,6 +17,8 @@ export interface RawNode {
   rank?: string
   /** Other things a player might type for this node. */
   aliases?: string[]
+  /** Leaves only: higher for the better known. What a cut keeps; see size.ts. */
+  fame?: number
   children?: RawNode[]
 }
 
@@ -26,6 +28,13 @@ export interface Source {
   licence?: string
   licence_url?: string
   note?: string
+}
+
+/** A tree that can be played cut to its best-known leaves; see size.ts. */
+export interface SizesSpec {
+  min: number
+  default: number
+  stops?: number[]
 }
 
 export interface LadderSpec {
@@ -61,6 +70,8 @@ export interface Manifest {
    *  chain: a chess move's "1…" says whose move it is, which the step before
    *  has already said. */
   chain_trim?: string
+  /** The tree can be played at sizes from `min` to all its leaves. */
+  sizes?: SizesSpec
 }
 
 /** How a dataset's chains of labels read; see `chain_order`. */

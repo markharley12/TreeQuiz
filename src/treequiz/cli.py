@@ -7,6 +7,10 @@
     treequiz lineup ID [--seed SEED | --daily]        # line-up
     treequiz state ID SECRET [GUESS ...] [--hints N]    # the raw JSON
     treequiz explore ID [ROOT] [--budget N]
+
+Every command but list and validate takes --size N, for a tree with sizes:
+played cut to its N best-known leaves. A sized tree's daily is always at its
+default size, whatever --size says, as in the app.
 """
 from __future__ import annotations
 
@@ -45,6 +49,19 @@ def render(state: dict | None) -> str:
     return "\n".join(lines)
 
 
+def _load(args: argparse.Namespace) -> dataset.Dataset:
+    """The dataset as the command plays it: cut to --size, or for a sized
+    tree's daily, to its default."""
+    ds = dataset.load(args.id)
+    if ds.sizes is None:
+        if args.size is not None:
+            raise ValueError(f"{args.id} has no sizes; it is played whole")
+        return ds
+    if getattr(args, "daily", False):
+        return ds.at_size(ds.sizes.default)
+    return ds.at_size(args.size or ds.sizes.default)
+
+
 def cmd_list(_: argparse.Namespace) -> int:
     for ds_id in dataset.available():
         ds = dataset.load(ds_id)
@@ -65,13 +82,13 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
 
 def cmd_state(args: argparse.Namespace) -> int:
-    ds = dataset.load(args.id)
+    ds = _load(args)
     print(json.dumps(game.get_game_state(ds, args.secret, args.guesses, args.hints), indent=2))
     return 0
 
 
 def cmd_explore(args: argparse.Namespace) -> int:
-    ds = dataset.load(args.id)
+    ds = _load(args)
 
     def walk(node: dict, indent: int) -> None:
         more = " +" if node["truncated"] else ""
@@ -85,7 +102,7 @@ def cmd_explore(args: argparse.Namespace) -> int:
 
 
 def cmd_play(args: argparse.Namespace) -> int:
-    ds = dataset.load(args.id)
+    ds = _load(args)
     secret, seed = game.pick(ds, seed=args.seed, daily=args.daily)
     noun = ds.noun
     print(f"{ds.title} — guess the secret {noun}.  Seed {seed}")
@@ -123,7 +140,7 @@ def cmd_play(args: argparse.Namespace) -> int:
 
 
 def cmd_odd(args: argparse.Namespace) -> int:
-    ds = dataset.load(args.id)
+    ds = _load(args)
     seed = args.seed or odd.pick_seed(ds, daily=args.daily)
     puzzles = odd.make_set(ds, seed)
     print(f"{ds.title} — odd one out. Seed {seed}")
@@ -149,7 +166,7 @@ def cmd_odd(args: argparse.Namespace) -> int:
 
 
 def cmd_lineup(args: argparse.Namespace) -> int:
-    ds = dataset.load(args.id)
+    ds = _load(args)
     seed = args.seed or lineup.pick_seed(ds, daily=args.daily)
     puzzles = lineup.make_set(ds, seed)
     print(f"{ds.title} — line-up. Seed {seed}")
@@ -208,6 +225,8 @@ def main(argv: list[str] | None = None) -> int:
     e.add_argument("root", nargs="?")
     e.add_argument("--budget", type=int, default=40)
     e.set_defaults(fn=cmd_explore)
+    for cmd in (p, o, lu, s, e):
+        cmd.add_argument("--size", type=int)
     args = ap.parse_args(argv)
     try:
         return args.fn(args)
