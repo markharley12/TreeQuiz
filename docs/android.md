@@ -36,10 +36,15 @@ and keeps the APK as an artifact.
   round's three confirmations.
 - **Icons and splash** are TaxoQuiz's generated resources, copied: the icon
   is the same drawing (`pwa/icon.svg`, identical art).
-- **Release signing** reads `TREEQUIZ_RELEASE_*` (store file, store
-  password, key alias, key password) from `~/.gradle/gradle.properties` or
-  the environment; without them a release build is unsigned. No key made
-  yet: a new one or TaxoQuiz's is the owner's call (see Signing below).
+- **Release signing uses TaxoQuiz's key** (the owner's choice):
+  `build.gradle` reads `TREEQUIZ_RELEASE_*` (store file, store password, key
+  alias, key password) from `~/.gradle/gradle.properties` or the
+  environment, each falling back to its `TAXOQUIZ_RELEASE_*` twin, so the
+  passwords stay in one place. Without either a release build is unsigned.
+  `npm run android:release` gives `android/app/build/outputs/apk/release/
+  app-release.apk`, 4.8MB; checked with `apksigner verify --print-certs`:
+  v2 scheme, `CN=TaxoQuiz, O=markharley12`, SHA-256 `85:62:B9:72:…:30:FC:1B:C2`.
+  The ID differs, so it neither updates nor replaces TaxoQuiz on a phone.
 - **Not tested on a phone or emulator** when written: the APK was inspected
   (package, SDK levels, bundled trees) and the app build run in a browser.
 

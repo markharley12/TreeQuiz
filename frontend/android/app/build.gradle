@@ -4,9 +4,15 @@ apply plugin: 'com.android.application'
 // developer machine, or the environment. The key is never committed — anyone
 // holding it can publish an update as this app, and losing it means no update
 // can ever be published as this app again. Without it a release build still
-// succeeds, unsigned, and debug builds are unaffected. (TaxoQuiz's, renamed.)
-def signingValue = { String key -> findProperty(key) ?: System.getenv(key) }
-def releaseStore = signingValue('TREEQUIZ_RELEASE_STORE_FILE')
+// succeeds, unsigned, and debug builds are unaffected.
+//
+// TreeQuiz signs with TaxoQuiz's key (the owner's choice, Oct 2026), so each
+// TREEQUIZ_RELEASE_* setting falls back to its TAXOQUIZ_RELEASE_* twin, which
+// a machine that signed TaxoQuiz already has: the passwords stay in one place.
+// Same key, different app ID, so this does not update TaxoQuiz's installs.
+def setting = { String key -> findProperty(key) ?: System.getenv(key) }
+def signingValue = { String name -> setting("TREEQUIZ_RELEASE_${name}") ?: setting("TAXOQUIZ_RELEASE_${name}") }
+def releaseStore = signingValue('STORE_FILE')
 
 android {
     namespace = "io.github.markharley12.treequiz"
@@ -28,9 +34,9 @@ android {
         release {
             if (releaseStore) {
                 storeFile file(releaseStore)
-                storePassword signingValue('TREEQUIZ_RELEASE_STORE_PASSWORD')
-                keyAlias signingValue('TREEQUIZ_RELEASE_KEY_ALIAS')
-                keyPassword signingValue('TREEQUIZ_RELEASE_KEY_PASSWORD')
+                storePassword signingValue('STORE_PASSWORD')
+                keyAlias signingValue('KEY_ALIAS')
+                keyPassword signingValue('KEY_PASSWORD')
             }
         }
     }
