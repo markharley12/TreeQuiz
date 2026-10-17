@@ -16,7 +16,7 @@ and the rest of each script is as TaxoQuiz left it.
                                            scrape_taxon_info.py write; `game` by
                                            default (TaxoQuiz's data/<name>/)
 
-`build_animals_full.py` converts a staging tree into `datasets/animals-full/`.
+`build_animals_full.py` converts a staging tree into `datasets/animals/`.
 A staging tree stays in TaxoQuiz's shape (binomial in `name`, English in
 `common_name`, a `qid` on every node) because every script here reads that
 shape, and the conversion is one function rather than eight ports.
@@ -24,7 +24,7 @@ shape, and the conversion is one function rather than eight ports.
 `$ANIMALS_FULL_DIR` moves the work directory, which the tests use, and
 `$ANIMALS_FULL_DATASET` picks the staging tree, as `$TAXOQUIZ_DATASET` did.
 
-**Ranks** are TreeQuiz's ladder (`treequiz.ladder`) read with the animals-full
+**Ranks** are TreeQuiz's ladder (`treequiz.ladder`) read with the animals
 manifest's levels, which are TaxoQuiz's `LEVELS`. Two differences from
 TaxoQuiz's `ranks.py`, both documented in `ladder.py`: the root is pinned at 0
 and leaves at the top whatever their ranks, and ties below go to the longer
@@ -44,7 +44,11 @@ from treequiz import ladder as _ladder  # noqa: E402
 from treequiz.dataset import Ladder  # noqa: E402
 from treequiz.jsonio import read_json, write_json_atomic  # noqa: E402,F401  (re-exported)
 
-DATASET_ID = "animals-full"
+# The tree this pipeline ships, and its own name for its work directory: it
+# shipped as `animals-full` beside TaxoQuiz's curated 530 until it replaced
+# them (Oct 2026), and the caches under that name are 143MB to rescrape.
+DATASET_ID = "animals"
+WORK_ID = "animals-full"
 MANIFEST = REPO / "datasets" / DATASET_ID / "manifest.json"
 
 WORK_ENV = "ANIMALS_FULL_DIR"
@@ -62,7 +66,7 @@ CACHE_RAW_TREE = "wikidata-tree-raw.json"
 def data_dir() -> Path:
     """The work directory. Override with $ANIMALS_FULL_DIR."""
     env = os.environ.get(WORK_ENV)
-    return Path(env) if env else REPO / "datagen" / "_cache" / DATASET_ID
+    return Path(env) if env else REPO / "datagen" / "_cache" / WORK_ID
 
 
 def cache_dir() -> Path:

@@ -94,7 +94,7 @@ def test_a_tree_too_small_for_ten_different_puzzles_repeats_rather_than_failing(
     assert all(sorted(p["pair"]) == ["a", "b"] for p in puzzles)
 
 
-def test_the_odd_one_is_shown_in_every_position():
-    ds = dataset.load("animals")
+def test_the_odd_one_is_shown_in_every_position(animals530):
+    ds = animals530
     spots = {p["choices"].index(p["odd"]) for k in range(6) for p in odd.make_set(ds, odd.pick_seed(ds))}
     assert spots == {0, 1, 2}

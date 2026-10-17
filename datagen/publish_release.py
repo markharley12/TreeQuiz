@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Publish a remote tree's built files as a GitHub Release.
 
-A tree too big for git (animals-full: a 6MB tree and 39MB of popup text)
+A tree too big for git (animals: a 6MB tree and 39MB of popup text)
 commits only its hand-written manifest. The manifest's `release` names a
 GitHub Release, and the Pages workflow downloads that release's assets into
 `datasets/<id>/` before it builds — so the assets are named exactly as the
@@ -18,8 +18,8 @@ Without `--yes` this only checks the files and says what it would run.
 Publishing is the owner's call: it puts the data on GitHub under their name.
 
 Usage:
-    python3 datagen/publish_release.py animals-full          # check, show the plan
-    python3 datagen/publish_release.py animals-full --yes    # publish
+    python3 datagen/publish_release.py animals               # check, show the plan
+    python3 datagen/publish_release.py animals --yes         # publish
 """
 from __future__ import annotations
 

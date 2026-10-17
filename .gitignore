@@ -13,5 +13,5 @@ node_modules/
 
 # Built by datagen/build_animals_full.py and published as a GitHub Release (the
 # manifest's `release`); only the hand-written manifest is committed.
-/datasets/animals-full/*
-!/datasets/animals-full/manifest.json
+/datasets/animals/*
+!/datasets/animals/manifest.json

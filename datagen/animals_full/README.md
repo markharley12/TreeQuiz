@@ -1,7 +1,7 @@
 # datagen/animals_full — the Wikidata animals pipeline
 
 TaxoQuiz's datagen, ported in Oct 2026 (TaxoQuiz's `datagen/README.md` and
-`data/README.md`, edited). It builds the tree behind `datasets/animals-full`:
+`data/README.md`, edited). It builds the tree behind `datasets/animals`:
 every animal species at least six Wikipedias cover, 41,153 of them, hung on
 Wikidata's tree of life. It is animal-specific (Linnaean ranks, binomials, the
 Catalogue of Life), which is why it lives in its own directory rather than as
@@ -36,10 +36,10 @@ python3 datagen/animals_full/extract_game_tree.py --dataset next   # -> next/tre
 python3 datagen/animals_full/seed_taxon_info.py --from game --to next
 ANIMALS_FULL_DATASET=next python3 datagen/animals_full/scrape_taxon_info.py   # only what is new
 python3 datagen/animals_full/validate_dataset.py --dataset next
-python3 datagen/build_animals_full.py --dataset next               # -> datasets/animals-full/
+python3 datagen/build_animals_full.py --dataset next               # -> datasets/animals/
 
 # Then, if it is to be published (asks nothing without --yes; the owner's call)
-python3 datagen/publish_release.py animals-full
+python3 datagen/publish_release.py animals
 ```
 
 Build the next tree beside the current one (`--dataset next`) and switch when
@@ -90,7 +90,7 @@ about 0.30 ancestors each. The size slider rests on the same fact.
 
 Three shapes, and the raw one crashes anything that expects another:
 
-| | `_raw/wikidata-tree-raw.json` | `<name>/tree.json` (staging) | `datasets/animals-full/tree.json` |
+| | `_raw/wikidata-tree-raw.json` | `<name>/tree.json` (staging) | `datasets/animals/tree.json` |
 |---|---|---|---|
 | root | Life | Animalia | Animalia |
 | a leaf's `name` | the English name, "Gabon Coucal" | the binomial, *Centropus anselli* | the binomial |
@@ -123,7 +123,7 @@ to write** if a duplicate survives or the shape and warmth checks fail.
 `validate_dataset.py` holds a staging tree to what TreeQuiz's validator cannot
 see there: every leaf a species, common names unique ignoring case. Warmth and
 the orderings are the same checks on the same ladder, with the orderings read
-from the animals-full manifest. `write_dataset` runs TreeQuiz's validator again
+from the animals manifest. `write_dataset` runs TreeQuiz's validator again
 on the converted tree and refuses one that fails.
 
 `audit_dataset.py` fails nothing: it lists what would look wrong in explore,

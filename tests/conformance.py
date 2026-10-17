@@ -36,6 +36,7 @@ from treequiz.ladder import believed_levels, warmth_by_name  # noqa: E402
 from treequiz.tree import all_nodes, label_of, leaves  # noqa: E402
 
 GOLDEN = Path(__file__).resolve().parents[1] / "frontend" / "src" / "engine" / "conformance.json"
+FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
 LINNAEAN = {"levels": {"life": -1, "kingdom": 0, "subkingdom": 0.3, "phylum": 1, "class": 2,
                        "subclass": 2.3, "order": 3, "family": 4, "genus": 5, "species": 6}, "top": 6}
@@ -268,17 +269,25 @@ def shipped() -> list[str]:
     """The datasets a clean clone has. A manifest naming a `release` is a remote
     tree: its files are built locally and published as a GitHub Release, so a
     builder's machine has them and CI does not, and a file that depended on
-    which machine wrote it would be stale on every other. animals-full is one,
-    and at 57,616 nodes it would also be most of the file. Cases for cutting
-    a sized tree belong on trees a clean clone can rebuild them from."""
+    which machine wrote it would be stale on every other. animals is one, and
+    at 57,616 nodes it would also be most of the file. Cases for cutting a
+    sized tree belong on trees a clean clone can rebuild them from."""
     return [i for i in dataset.available() if not dataset.load(i).manifest.get("release")]
 
 
-def cased(ds_id: str) -> dataset.Dataset:
-    """A shipped dataset as its cases see it: a sized tree cut to its smallest
-    size, since warmth over all of a 57,000-node tree would be megabytes, and
-    the cut itself is checked on the synthetic tree above."""
-    ds = dataset.load(ds_id)
+def fixtures() -> list[str]:
+    """The tests' own trees (tests/fixtures/), which no build ships: TaxoQuiz's
+    curated 530 animals, shipped as `animals` until the Wikidata tree took the
+    name, and kept in the file so the engine is still checked on a tree with
+    a full Linnaean ladder in every clone."""
+    return sorted(p.name for p in FIXTURES.iterdir() if (p / "tree.json").is_file())
+
+
+def cased(ds_id: str, root: Path | None = None) -> dataset.Dataset:
+    """A dataset as its cases see it: a sized tree cut to its smallest size,
+    since warmth over all of a 57,000-node tree would be megabytes, and the
+    cut itself is checked on the synthetic tree above."""
+    ds = dataset.load(ds_id, root)
     return ds.at_size(ds.sizes.min) if ds.sizes else ds
 
 
@@ -298,7 +307,8 @@ def build() -> dict:
         "odd": odd_cases(),
         "lineup": lineup_cases(),
         "size": {"tree": SIZE_TREE, "cuts": size_cases()},
-        "datasets": [dataset_cases(cased(i), rng) for i in shipped()],
+        "datasets": [*(dataset_cases(cased(i), rng) for i in shipped()),
+                     *(dataset_cases(cased(i, FIXTURES), rng) for i in fixtures())],
     }
 
 

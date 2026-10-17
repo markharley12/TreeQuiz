@@ -222,6 +222,22 @@ describe('deleting', () => {
   })
 })
 
+describe('a copy the catalogue no longer plays', () => {
+  it('is deleted when its tree is gone, or has become a sized tree', async () => {
+    serve({ trees: [small, big] }, bodies)
+    let d = await load({ trees: [small, big] })
+    await d.download('big')
+    await d.readJson('small', 'tree.json')
+    await vi.waitFor(() => expect(d.downloads().trees.get('small')?.progress).toBeNull())
+
+    // A deploy: big is gone, and small is now sized — a different game.
+    const sized = entry('small', 'v2', { 'tree.json': {}, 'info.json': {} }, { manifest: { title: 'small', sizes: { min: 1, default: 1 } } })
+    d = await load({ trees: [sized] })
+    expect(d.downloads().trees.get('small')?.copy).toBeNull()
+    expect([...storage.get('treequiz-data')!.keys()]).toEqual([])
+  })
+})
+
 describe('without Cache Storage', () => {
   it('still plays, holding downloads for the page only', async () => {
     vi.stubGlobal('caches', undefined)

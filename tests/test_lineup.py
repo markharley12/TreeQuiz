@@ -58,10 +58,10 @@ def test_a_hard_puzzle_meets_the_target_near_it():
         assert all(m["name"] in deepest for m in p["meets"])
 
 
-def test_a_level_needs_another_branch():
+def test_a_level_needs_another_branch(animals530):
     # Canis and Canidae hold only the wolf, so nothing meets the wolf there;
     # Primates holds only people.
-    ds = dataset.load("animals")
+    ds = animals530
     for p in lineup.make_set(ds, lineup.pick_seed(ds)):
         for m in p["meets"]:
             assert len(children_of(index(ds).lineage_of[p["target"]][lineage(ds, p["target"]).index(m["name"])])) >= 2

@@ -187,16 +187,18 @@ class Dataset:
 _loaded: dict[Path, Dataset] = {}
 
 
-def load(dataset_id: str) -> Dataset:
-    """Load a dataset by id. Raises ValueError for one that does not exist,
-    rather than falling back to another: playing the wrong tree silently is
-    worse than an error."""
-    path = (datasets_root() / dataset_id).resolve()
+def load(dataset_id: str, root: Path | None = None) -> Dataset:
+    """Load a dataset by id, from the datasets root or from `root` (the tests'
+    fixtures). Raises ValueError for one that does not exist, rather than
+    falling back to another: playing the wrong tree silently is worse than an
+    error."""
+    root = root or datasets_root()
+    path = (root / dataset_id).resolve()
     if path not in _loaded:
         manifest_path, tree_path = path / "manifest.json", path / "tree.json"
         if not manifest_path.is_file() or not tree_path.is_file():
             raise ValueError(
-                f"No dataset {dataset_id!r} under {datasets_root()} "
+                f"No dataset {dataset_id!r} under {root} "
                 f"(need manifest.json and tree.json). Have: {', '.join(available()) or 'none'}"
             )
         _loaded[path] = Dataset(dataset_id, path, read_json(manifest_path), read_json(tree_path))

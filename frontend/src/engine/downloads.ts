@@ -134,17 +134,39 @@ const autoUpdated = new Set<string>()
 
 const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(DATA_CACHE) : null
 
+/**
+ * A copy this build cannot play as an older version of its tree, which is
+ * deleted rather than kept: a tree no longer in the catalogue, or one that has
+ * become a sized tree or stopped being one. The second is a different game
+ * under the same name — its rounds are kept under other keys (sizes.ts), so
+ * the old copy keeps no saved round alive — as when the Wikidata animals took
+ * the name `animals` from TaxoQuiz's curated 530 (Oct 2026). Kept, the 530
+ * would have played on as `animals` behind an "Update" button, and the 10MB
+ * of the old `animals-full` sat on the device with nothing to show it.
+ */
+function gone(copy: Copy): boolean {
+  const entry = BAKED.get(copy.id)
+  return !entry || Boolean(entry.manifest.sizes) !== Boolean(copy.manifest.sizes)
+}
+
 async function readCopies() {
   copies.clear()
   const prefix = copyKey('')
+  const stale: Copy[] = []
   for (const key of await store.keys()) {
     if (!key.startsWith(prefix)) continue
     try {
       const copy = await (await store.match(key))?.json() as Copy | undefined
-      if (copy?.id && BAKED.has(copy.id)) copies.set(copy.id, copy)
+      if (!copy?.id) continue
+      if (gone(copy)) stale.push(copy)
+      else copies.set(copy.id, copy)
     } catch {
       // A record that will not parse is no copy; its files are re-fetched.
     }
+  }
+  for (const copy of stale) {
+    await store.delete(copyKey(copy.id))
+    for (const f of Object.values(copy.files)) await store.delete(f.href)
   }
 }
 

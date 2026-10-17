@@ -59,10 +59,13 @@ interface Golden {
 
 const golden: Golden = JSON.parse(goldenText)
 
+// The shipped trees, and the tests' own (tests/fixtures/), which conformance.py
+// covers too.
 const files = import.meta.glob<string>('../../../datasets/*/{manifest,tree}.json', { eager: true, query: '?raw', import: 'default' })
+const fixtures = import.meta.glob<string>('../../../tests/fixtures/*/{manifest,tree}.json', { eager: true, query: '?raw', import: 'default' })
 function dataset(id: string): Dataset {
   const read = (file: string) => {
-    const text = files[`../../../datasets/${id}/${file}`]
+    const text = files[`../../../datasets/${id}/${file}`] ?? fixtures[`../../../tests/fixtures/${id}/${file}`]
     if (text === undefined) throw new Error(`dataset ${id} has no ${file}`)
     return JSON.parse(text)
   }
@@ -188,6 +191,7 @@ it('covers every dataset that ships', () => {
   // A manifest naming a `release` is a remote tree, built on one machine and
   // fetched from a GitHub Release elsewhere, so conformance.py leaves it out.
   const remote = (id: string) => Boolean((JSON.parse(files[`../../../datasets/${id}/manifest.json`]) as { release?: string }).release)
-  const shipped = new Set(Object.keys(files).filter((p) => p.endsWith('/tree.json')).map((p) => p.split('/').slice(-2)[0]).filter((id) => !remote(id)))
+  const ids = (glob: Record<string, string>) => Object.keys(glob).filter((p) => p.endsWith('/tree.json')).map((p) => p.split('/').slice(-2)[0])
+  const shipped = new Set([...ids(files).filter((id) => !remote(id)), ...ids(fixtures)])
   expect(new Set(golden.datasets.map((c) => c.id))).toStrictEqual(shipped)
 })

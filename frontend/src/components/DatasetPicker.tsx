@@ -3,7 +3,7 @@ import { DATASETS } from '../engine/datasets'
 import { utcToday } from '../engine/seed'
 import { readDailies, score } from '../results'
 import { shortTitle } from '../words'
-import { dailyGame } from '../sizes'
+import { chosenGame } from '../sizes'
 import { formatBytes } from '../engine/catalogue'
 import type { TreeState } from '../engine/downloads'
 import { useDownloads } from '../useDownloads'
@@ -47,8 +47,8 @@ export default function DatasetPicker({ selected, onPick }: Props) {
         const on = id === selected
         // Today's daily on this tree, done: a tick and its score, so the front
         // page shows which trees are still to play today. A sized tree's is
-        // at its default size, whatever size it is played at.
-        const done = readDailies(dailyGame(id))[today]
+        // the one at the size it is played at.
+        const done = readDailies(chosenGame(id))[today]
         return (
           <ButtonBase
             key={id}

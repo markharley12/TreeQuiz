@@ -1,5 +1,8 @@
 # animals-full: how the data went wrong, and what checks it now
 
+*The tree ships as `animals` since 17 Oct 2026; it was `animals-full`
+beside TaxoQuiz's curated 530 until then, and this history keeps that name.*
+
 *TaxoQuiz's history of its Wikidata tree (Aug–Oct 2026), from the "Dataset",
 "Validating a dataset" and "Auditing a dataset" sections of its CLAUDE.md,
 edited to TreeQuiz's names. The display decisions those sections also held

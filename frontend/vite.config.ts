@@ -6,6 +6,7 @@ import { defineConfig } from 'vitest/config'
 import { loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { ASK_BYTES, downloadSet, sizeOf, type Catalogue, type CatalogueTree } from './src/engine/catalogue.ts'
+import { leaves } from './src/engine/tree.ts'
 
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url))
 const sha = (data: string | Buffer) => createHash('sha256').update(data).digest('hex')
@@ -26,11 +27,14 @@ const CATALOGUE_ID = 'virtual:treequiz-catalogue'
  * An app build (`dataBase` set, see VITE_DATA_BASE) bundles the trees small
  * enough to download without asking and leaves the rest to the website.
  */
-function scanDatasets(build: boolean, dataBase: string | undefined) {
-  const root = here('../datasets')
+function scanDatasets(build: boolean, dataBase: string | undefined, test: boolean) {
   const trees: CatalogueTree[] = []
   const emit = new Map<string, Buffer>()
-  for (const id of readdirSync(root).sort()) {
+  // The tests play on trees of their own too: tests/fixtures/ holds TaxoQuiz's
+  // curated 530 animals, small and fixed, which no build ships.
+  const ids = (root: string) => readdirSync(root).sort().map((id) => ({ root, id }))
+  const found = [...ids(here('../datasets')), ...(test ? ids(here('../tests/fixtures')) : [])]
+  for (const { root, id } of found) {
     const manifestPath = `${root}/${id}/manifest.json`
     if (!existsSync(manifestPath)) continue
     const manifestText = readFileSync(manifestPath, 'utf8')
@@ -51,7 +55,8 @@ function scanDatasets(build: boolean, dataBase: string | undefined) {
       files[name] = { url, bytes: source.length, gzip: gzipSync(source).length }
       sources.set(url, source)
     }
-    const entry: CatalogueTree = { id, manifest, version: version.digest('hex').slice(0, 12), files }
+    const tree = JSON.parse(sources.get(files['tree.json'].url)!.toString('utf8'))
+    const entry: CatalogueTree = { id, manifest, version: version.digest('hex').slice(0, 12), files, leaves: leaves(tree).length }
     if (dataBase) {
       // The app: small trees ride inside it, big ones come from the website.
       if (sizeOf(entry, downloadSet(entry)).bytes > ASK_BYTES) {
@@ -73,11 +78,13 @@ function catalogue(): Plugin {
   let scanned: ReturnType<typeof scanDatasets> | undefined
   let build = false
   let dataBase: string | undefined
-  const scan = () => (scanned ??= scanDatasets(build, dataBase))
+  let test = false
+  const scan = () => (scanned ??= scanDatasets(build, dataBase, test))
   return {
     name: 'treequiz-catalogue',
     configResolved(config) {
       build = config.command === 'build'
+      test = config.mode === 'test'
       dataBase = loadEnv(config.mode, config.envDir || process.cwd(), 'VITE_').VITE_DATA_BASE || undefined
     },
     resolveId(id) {

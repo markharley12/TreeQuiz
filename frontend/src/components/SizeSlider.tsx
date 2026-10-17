@@ -9,6 +9,8 @@ interface Props {
   size: Size
   /** "animals". */
   plural: string
+  /** The whole tree's leaf count, if known. */
+  leaves: number | null
   /** A size chosen: once let go, not at every mark passed on the way. */
   onChange: (size: Size) => void
 }
@@ -16,8 +18,8 @@ interface Props {
 /** How much of a sized tree to play, on the front page: logarithmic, and
  *  snapping to the tree's stops and to the whole tree. A size is a game of
  *  its own (sizes.ts), so letting go is a switch, as picking a tree is. */
-export default function SizeSlider({ sizes, size, plural, onChange }: Props) {
-  const marks = sliderMarks(sizes)
+export default function SizeSlider({ sizes, size, plural, leaves, onChange }: Props) {
+  const marks = sliderMarks(sizes, leaves)
   const valueOf = (s: Size) => marks.find((m) => m.size === s)?.value ?? marks[0].value
   const sizeAt = (v: number) => marks.find((m) => m.value === v)?.size ?? sizes.default
   // Where the thumb is while it is dragged; the size played until let go.
@@ -33,15 +35,16 @@ export default function SizeSlider({ sizes, size, plural, onChange }: Props) {
         max={marks[marks.length - 1].value}
         step={null}
         marks={marks.map(({ value, label }) => ({ value, label }))}
-        getAriaValueText={(v) => sizeText(sizeAt(v))}
+        getAriaValueText={(v) => sizeText(sizeAt(v), leaves)}
         valueLabelDisplay="off"
         onChange={(_, v) => setDragging(sizeAt(v as number))}
         onChangeCommitted={(_, v) => { setDragging(null); onChange(sizeAt(v as number)) }}
         sx={{ '& .MuiSlider-markLabel': { fontSize: '0.75rem' } }}
       />
       <Typography variant="body2" sx={{ textAlign: 'center', color: 'text.secondary', fontFamily: FONT_DISPLAY, fontStyle: 'italic' }}>
-        {shown === 'all' ? `Every one of the ${plural}, however obscure.` : `The ${sizeText(shown)} best-known ${plural}.`}
-        {shown !== sizes.default && ` Today’s is always from the ${sizeText(sizes.default)}.`}
+        {shown === 'all'
+          ? `Every one of the ${leaves === null ? '' : `${leaves.toLocaleString('en')} `}${plural}, however obscure.`
+          : `The ${sizeText(shown)} best-known ${plural}.`}
       </Typography>
     </Box>
   )

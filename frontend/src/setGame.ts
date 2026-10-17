@@ -39,15 +39,13 @@ interface Options<P, A> {
   dataset: string
   /** A set's seed from a link, to deal instead of resuming. */
   linkSeed: string | null
-  /** Whether this game deals today's set; true unless said otherwise. */
-  daily?: boolean
   size: number
   start: (dataset: string, opts: { seed?: string; daily?: boolean }) => Promise<DealtSet<P>>
   /** What an answer scores: 1 or 0 for odd one out, names in place for line-up. */
   points: (puzzle: P, answer: A) => number
 }
 
-export function useSetGame<P, A>({ game, dataset, linkSeed, daily = true, size, start, points }: Options<P, A>) {
+export function useSetGame<P, A>({ game, dataset, linkSeed, size, start, points }: Options<P, A>) {
   const [set, setSet] = useState<DealtSet<P> | null>(null)
   const [answers, setAnswers] = useState<A[]>([])
   // The puzzle on screen. Behind `answers` by one while an answer is shown.
@@ -91,9 +89,9 @@ export function useSetGame<P, A>({ game, dataset, linkSeed, daily = true, size, 
     const unfinished = saved !== null && saved.answers.length < size
     const how: Deal<A> = linkSeed !== null
       ? { seed: linkSeed, resumed: saved && sameSeed(saved.seed, linkSeed) ? saved.answers : [] }
-      : saved && (unfinished || !daily || readSetDailies(game, dataset)[today])
+      : saved && (unfinished || readSetDailies(game, dataset)[today])
         ? { seed: saved.seed, resumed: saved.answers, day: savedDay }
-        : daily ? todays() : {}
+        : todays()
     let cancelled = false
     start(dataset, { seed: how.seed, daily: how.day !== undefined && !how.seed }).then(
       (next) => { if (!cancelled) show(next, how.resumed ?? [], how.day ?? null, how.counted) },

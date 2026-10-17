@@ -4,7 +4,7 @@ from __future__ import annotations
 import io
 import json
 
-from conftest import ZOO, ZOO_LADDER
+from conftest import ANIMALS_530, FIXTURES, ZOO, ZOO_LADDER
 
 from treequiz import cli, dataset, game
 
@@ -12,19 +12,21 @@ from treequiz import cli, dataset, game
 def test_list_and_validate_every_dataset(capsys):
     assert cli.main(["list"]) == 0
     out = capsys.readouterr().out
-    assert "maths" in out and "animals" in out
+    assert "maths" in out and "chess" in out
     assert cli.main(["validate", "--all"]) == 0
     assert "FAIL" not in capsys.readouterr().out
 
 
-def test_state_prints_the_engines_json(capsys):
-    assert cli.main(["state", "animals", "lion", "tiger"]) == 0
+def test_state_prints_the_engines_json(capsys, monkeypatch):
+    monkeypatch.setenv(dataset.DATASETS_ENV, str(FIXTURES))
+    assert cli.main(["state", ANIMALS_530, "lion", "tiger"]) == 0
     state = json.loads(capsys.readouterr().out)
     assert state["label"] == "Animalia"
 
 
-def test_an_unknown_name_is_an_error_not_a_traceback(capsys):
-    assert cli.main(["state", "animals", "lion", "unicorn"]) == 1
+def test_an_unknown_name_is_an_error_not_a_traceback(capsys, monkeypatch):
+    monkeypatch.setenv(dataset.DATASETS_ENV, str(FIXTURES))
+    assert cli.main(["state", ANIMALS_530, "lion", "unicorn"]) == 1
     assert "unicorn" in capsys.readouterr().err
 
 

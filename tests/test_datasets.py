@@ -16,7 +16,7 @@ SHIPPED = dataset.available()
 
 
 def test_there_are_datasets_to_ship():
-    assert {"animals", "maths"} <= set(SHIPPED)
+    assert {"maths", "chess"} <= set(SHIPPED)
 
 
 @pytest.mark.parametrize("ds_id", SHIPPED)

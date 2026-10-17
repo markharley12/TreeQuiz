@@ -4,14 +4,13 @@
  * A tree whose manifest has `sizes` is played cut to its best-known leaves
  * (engine/size.ts), and **the size is part of the game**: a round dealt at
  * 2,000 is not one at 5,000, so everything kept on the device is kept per
- * tree and size. That is done by naming a game `<tree>@<size>` — `animals-
- * full@2000`, `animals-full@all` — and handing that name to everything that
+ * tree and size. That is done by naming a game `<tree>@<size>` —
+ * `animals@2000`, `animals@all` — and handing that name to everything that
  * used to take a tree's id: the storage keys, the info cache, the API. An
  * unsized tree's game is its id alone, so its keys are what they always were.
  *
- * The daily is the exception that keeps a daily a daily: it is always dealt
- * at the manifest's default size, so everyone plays the same one, and its
- * records live under that size's game.
+ * So each size has its own daily, as it has its own everything: everyone
+ * playing at 5,000 today plays the same one, which is not the one at 2,000.
  */
 import { createContext, useContext } from 'react'
 import { entryFor, loadDataset, loadedDataset } from './engine/datasets'
@@ -50,10 +49,14 @@ export function chooseSize(id: string, size: Size): void {
   setSetting('sizes', { ...getSettings().sizes, [id]: size })
 }
 
-/** The game a tree's daily is dealt in: its default size. */
-export function dailyGame(id: string): string {
-  const sizes = sizesFor(id)
-  return gameId(id, sizes ? sizes.default : null)
+/** The game a tree is played as: at its chosen size, if it is sized. */
+export function chosenGame(id: string, chosen = getSettings().sizes): string {
+  return gameId(id, chosenSize(id, chosen))
+}
+
+/** How many leaves the whole tree has, if the build knew: null if not. */
+export function leafCount(id: string): number | null {
+  return entryFor(id)?.leaves ?? null
 }
 
 /** How far a size reaches, for the info tiers: undefined for the whole tree. */
@@ -61,26 +64,32 @@ export function reach(size: Size | null): number | undefined {
   return typeof size === 'number' ? size : undefined
 }
 
-/** "2,000", or "all". */
-export function sizeText(size: Size): string {
-  return size === 'all' ? 'all' : size.toLocaleString('en')
+/** "2,000", or "all" — "all 41,153" when the whole tree's count is known. */
+export function sizeText(size: Size, leaves: number | null = null): string {
+  if (size === 'all') return leaves === null ? 'all' : `all ${leaves.toLocaleString('en')}`
+  return size.toLocaleString('en')
 }
 
-/** "2k", for a slider's marks and a chip. */
-export function shortSize(size: Size): string {
-  if (size === 'all') return 'All'
-  return size >= 1000 && size % 1000 === 0 ? `${size / 1000}k` : String(size)
+/** "2k", for a slider's marks and a chip; the whole tree is its count, "41k",
+ *  when known, and "All" when not. */
+export function shortSize(size: Size, leaves: number | null = null): string {
+  const n = size === 'all' ? leaves : size
+  if (n === null) return 'All'
+  if (n >= 1000 && n % 1000 === 0) return `${n / 1000}k`
+  return n >= 10000 ? `${Math.round(n / 1000)}k` : n.toLocaleString('en')
 }
 
 /** The slider's marks: each stop, then the whole tree, at the logarithm of its
  *  size, since 500 to 600 matters and 30,000 to 30,100 does not. The whole
- *  tree's count is not known until it loads, so it sits a doubling past the
- *  last stop. */
-export function sliderMarks(sizes: Sizes): { value: number; size: Size; label: string }[] {
+ *  tree's mark says its count and sits at it, when the build counted it (the
+ *  catalogue's `leaves`); without the tree it is "All", a doubling past the
+ *  last stop, since the front page should not load the tree to draw a mark. */
+export function sliderMarks(sizes: Sizes, leaves: number | null = null): { value: number; size: Size; label: string }[] {
   const last = sizes.stops[sizes.stops.length - 1]
+  const whole = leaves !== null && leaves > last ? leaves : last * 2
   return [
     ...sizes.stops.map((s) => ({ value: Math.log(s), size: s as Size, label: shortSize(s) })),
-    { value: Math.log(last * 2), size: 'all', label: shortSize('all') },
+    { value: Math.log(whole), size: 'all', label: shortSize('all', leaves) },
   ]
 }
 

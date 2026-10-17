@@ -3,7 +3,7 @@
   "title": "Animals",
   "short_title": "Animals",
   "prompt": "Guess the secret animal by its place in the tree of life.",
-  "blurb": "530 well-known species, from sponges to people, on a hand-curated taxonomy.",
+  "blurb": "From the 500 best-known species to all 41,000 in Wikidata's tree of life: slide to choose how obscure.",
   "noun": "animal",
   "noun_plural": "animals",
   "ladder": {
@@ -62,11 +62,33 @@
   },
   "bulk_unlock": 0.5,
   "info_source": "Wikipedia",
+  "sizes": {
+    "min": 500,
+    "default": 2000,
+    "stops": [
+      500,
+      1000,
+      2000,
+      5000,
+      10000,
+      20000
+    ]
+  },
+  "release": "animals-full-2026-10-17",
   "sources": [
     {
-      "name": "TaxoQuiz example taxonomy",
-      "url": "https://github.com/markharley12/TaxoQuiz",
-      "note": "Hand-curated NCBI-style tree with a clade layer above the phyla"
+      "name": "Wikidata",
+      "url": "https://www.wikidata.org",
+      "licence": "CC0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "note": "The species, chosen by how many Wikipedias cover them, their names and their parent taxa"
+    },
+    {
+      "name": "Catalogue of Life",
+      "url": "https://www.catalogueoflife.org",
+      "licence": "CC BY 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+      "note": "A second opinion on synonyms: a species is merged into another only when Wikidata and the Catalogue agree"
     },
     {
       "name": "Wikipedia",
@@ -88,7 +110,7 @@
           "Asterias rubens",
           "Vespula vulgaris",
           "Acropora cervicornis",
-          "Spongia officinalis"
+          "Desmacella annexa"
         ]
       },
       {
@@ -108,7 +130,7 @@
         "order": [
           "Canis lupus",
           "Homo sapiens",
-          "Macropus rufus",
+          "Sarcophilus harrisii",
           "Ornithorhynchus anatinus",
           "Crocodylus niloticus",
           "Rana temporaria"
@@ -122,6 +144,28 @@
           "Homo sapiens",
           "Carcharodon carcharias",
           "Lumbricus terrestris"
+        ]
+      },
+      {
+        "to": "Passer domesticus",
+        "order": [
+          "Corvus corax",
+          "Columba livia",
+          "Struthio camelus",
+          "Crocodylus niloticus",
+          "Homo sapiens",
+          "Salmo salar"
+        ]
+      },
+      {
+        "to": "Salmo salar",
+        "order": [
+          "Oncorhynchus mykiss",
+          "Esox lucius",
+          "Gadus morhua",
+          "Latimeria chalumnae",
+          "Carcharodon carcharias",
+          "Petromyzon marinus"
         ]
       }
     ]

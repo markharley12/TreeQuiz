@@ -60,7 +60,7 @@ from taxo import believed_levels, level_of, rank_levels  # noqa: E402
 
 def ground_truth(manifest: Path = MANIFEST) -> list[tuple[str, list[str]]]:
     """Chains of species that must come out in this order of relatedness,
-    warmest first, scored against the first one: the animals-full manifest's
+    warmest first, scored against the first one: the animals manifest's
     `checks.closer`, which is TaxoQuiz's table, so a staging tree is held to
     the orderings the dataset built from it will be.
 

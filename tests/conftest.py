@@ -4,6 +4,7 @@ under one id would otherwise share the first one's."""
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -67,6 +68,17 @@ ZOO_LADDER = {"levels": {"kingdom": 0, "phylum": 1, "class": 2, "order": 3, "fam
 @pytest.fixture
 def zoo() -> dataset.Dataset:
     return dataset.from_tree(ZOO, {"title": "Zoo", "noun": "animal", "ladder": ZOO_LADDER}, "zoo")
+
+
+# The tests' own trees, which no build ships: TaxoQuiz's curated 530 animals,
+# shipped as `animals` until the Wikidata tree took the name.
+FIXTURES = Path(__file__).resolve().parent / "fixtures"
+ANIMALS_530 = "animals-530"
+
+
+@pytest.fixture
+def animals530() -> dataset.Dataset:
+    return dataset.load(ANIMALS_530, FIXTURES)
 
 
 @pytest.fixture

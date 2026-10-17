@@ -150,6 +150,10 @@ Phases 1 and 2 are independent of 3–5; 3 and 4 are independent of each other;
 - **Two animals trees.** The curated 530 is a hand-built NCBI-style tree, not
   a subset of Wikidata's, so it cannot be the slider's 500 end. It stays as
   "Animals", bundled; `animals-full` sits beside it with the slider.
+  *Reversed the same day, once both were live:* the Wikidata tree took the
+  name `animals` and the 530 became a test fixture (`tests/fixtures/`), since
+  at 500 the slider already plays what the 530 were for. Every size also got
+  its own daily, rather than the daily only ever at `sizes.default`.
 - **Phases 1–2, 3 and 4 run in parallel**, one session each on its own
   branch, Android after.
 

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""datasets/animals-full — TaxoQuiz Full's 41,000 animals, with a fame on each.
+"""datasets/animals — TaxoQuiz Full's 41,000 animals, with a fame on each.
 
-`build_animals.py` converts TaxoQuiz's hand-curated 530; this converts the tree
-its Wikidata pipeline builds, which is now `datagen/animals_full/` (see its
-README). The pipeline writes a *staging tree* in TaxoQuiz's shape under
-`datagen/_cache/animals-full/`; this turns it into TreeQuiz's, the same way
-`build_animals.py` does:
+This converts the tree TaxoQuiz's Wikidata pipeline builds, which is now
+`datagen/animals_full/` (see its README). The pipeline writes a *staging tree*
+in TaxoQuiz's shape under `datagen/_cache/animals-full/`; this turns it into
+TreeQuiz's. (It shipped as `animals-full`, beside TaxoQuiz's hand-curated 530
+as `animals`, until it replaced them in Oct 2026: the 530 are now a test
+fixture, `tests/fixtures/animals-530/`, and the work directory kept its name.)
 
 - a species keeps its binomial as `name`, takes its English name as `label`,
   and lists the binomial in `aliases`, so typing "panthera" suggests the lion;
@@ -26,7 +27,7 @@ nodes that enter at stop `n` and not at the stop before, for each of the
 manifest's `sizes.stops` and then the leaf count. Playing at 2,000 then fetches
 the first three tiers rather than all 57,000 entries.
 
-**What is committed.** Only `datasets/animals-full/manifest.json`, by hand. The
+**What is committed.** Only `datasets/animals/manifest.json`, by hand. The
 tree and the tiers are built here, gitignored, and published as a GitHub
 Release named by the manifest's `release` (`publish_release.py`, which asks
 first). Whatever has `release` in its manifest is a remote tree: the
@@ -49,7 +50,6 @@ import shutil
 import sys
 from pathlib import Path
 
-from build_animals import convert_info
 from common import REPO, node, read_json, write_dataset, write_json_atomic
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "animals_full"))
@@ -67,6 +67,21 @@ TAXOQUIZ_TREE = Path("data") / "wikidata-parents-fixed"
 # Wikipedia's page images come back tagged for its analytics; the picture is
 # the same without, and 57,000 copies of the tag are about 4MB.
 UTM = "?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+
+
+def convert_info(info: dict) -> dict:
+    """TaxoQuiz's popup text in the generic shape: every field but the Q-ID,
+    renamed."""
+    out = {}
+    for name, e in info.items():
+        entry = {"description": e.get("description", "")}
+        if e.get("image_url"):
+            entry["image_url"] = e["image_url"]
+        if e.get("wikipedia_url"):
+            entry["url"] = e["wikipedia_url"]
+            entry["url_title"] = f"{e.get('wikipedia_title') or name} on Wikipedia"
+        out[name] = entry
+    return out
 
 
 def seed(taxoquiz: Path, name: str) -> None:

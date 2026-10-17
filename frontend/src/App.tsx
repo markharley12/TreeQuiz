@@ -27,7 +27,7 @@ import { readLink, shareBase, shareLink, withoutLink } from './shareLink'
 import { useSharer } from './sharer'
 import { guessWarmths, readDailies, recordDaily, shareText } from './results'
 import { bulkUnlock, noun, nounPlural, shortTitle } from './words'
-import { chooseSize, chosenSize, dailyGame, GameContext, gameId, parseGame, shortSize, sizesFor, sizeText, type Size } from './sizes'
+import { chooseSize, chosenSize, GameContext, gameId, leafCount, parseGame, shortSize, sizesFor, sizeText, type Size } from './sizes'
 import { useDownloads, useTree } from './useDownloads'
 import { download } from './engine/downloads'
 import { formatBytes } from './engine/catalogue'
@@ -156,9 +156,6 @@ interface Nav {
   odd?: string | null
   /** A line-up set's seed, from a link. */
   lineup?: string | null
-  /** Open today's round on arrival: asked for at another size, and the daily
-   *  is only ever played at the default. */
-  daily?: boolean
 }
 
 export default function App() {
@@ -286,7 +283,6 @@ function Round({ dataset, game, size, manifest, nav, onSwitch, onManage }: Round
       window.history.replaceState(window.history.state, '', withoutLink(window.location.href))
     }
     if (boot.linked !== null && !boot.ask) void startGame('practice', boot.linked)
-    else if (nav.daily && dailyHere) openDaily()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Draw a resumed round's tree. A round with only hints has one too.
@@ -440,25 +436,21 @@ function Round({ dataset, game, size, manifest, nav, onSwitch, onManage }: Round
   const resumable = roundMode !== null && secret !== null && !won && !revealed && (guesses.length > 0 || hints > 0)
   // Today's daily: the round in memory if that is it, and otherwise its record,
   // which the stats show — a finished daily is not dealt a second time. On a
-  // sized tree it lives at the default size; at any other, the button reads
-  // that size's round and record, and goes there to play.
+  // sized tree every size has its own, so the daily is this game's.
   const sizes = sizesFor(dataset)
-  const daily = dailyGame(dataset)
-  const dailyHere = daily === game
-  const dailyElsewhere = dailyHere ? null : readSession(daily)
-  const dailyInMemory = dailyHere && roundMode === 'daily' && secret !== null
+  const daily = game
+  const dailyInMemory = roundMode === 'daily' && secret !== null
   const doneToday = (dailyInMemory && (won || revealed)) || Boolean(readDailies(daily)[today()])
-  const dailyResumable = dailyHere ? dailyInMemory && resumable : dailyElsewhere?.mode === 'daily' && inProgress(dailyElsewhere)
+  const dailyResumable = dailyInMemory && resumable
 
   function openDaily() {
-    if (!dailyHere) onSwitch(dataset, { landing: true, seed: null, daily: true }, sizes!.default)
-    else if (dailyInMemory) resume()
+    if (dailyInMemory) resume()
     else if (doneToday) setStatsOpen(true)
     else void startGame('daily')
   }
 
   // A chip's word for the size played, on a sized tree.
-  const sized = (chip: string) => (size === null ? chip : `${chip} · ${shortSize(size)}`)
+  const sized = (chip: string) => (size === null ? chip : `${chip} · ${shortSize(size, leafCount(dataset))}`)
 
   if (loading) return (
     <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}><CircularProgress /></Box>
@@ -487,7 +479,7 @@ function Round({ dataset, game, size, manifest, nav, onSwitch, onManage }: Round
         </Typography>
         {sizes && size !== null && (
           <SizeSlider
-            sizes={sizes} size={size} plural={plural}
+            sizes={sizes} size={size} plural={plural} leaves={leafCount(dataset)}
             onChange={(next) => next !== size && onSwitch(dataset, { landing: true, seed: null }, next)}
           />
         )}
@@ -564,14 +556,14 @@ function Round({ dataset, game, size, manifest, nav, onSwitch, onManage }: Round
   if (mode === 'odd') return (
     <Box sx={{ p: PAGE_PAD, height: '100dvh', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', '& > *': { flexShrink: 0 } }}>
       {header(sized('Odd one out'))}
-      <OddOneOut dataset={game} title={shortTitle(manifest)} plural={plural} linkSeed={oddLink} daily={dailyHere} />
+      <OddOneOut dataset={game} title={shortTitle(manifest)} plural={plural} linkSeed={oddLink} />
     </Box>
   )
 
   if (mode === 'lineup') return (
     <Box sx={{ p: PAGE_PAD, height: '100dvh', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', '& > *': { flexShrink: 0 } }}>
       {header(sized('Line-up'))}
-      <LineUp dataset={game} title={shortTitle(manifest)} plural={plural} linkSeed={lineupLink} daily={dailyHere} />
+      <LineUp dataset={game} title={shortTitle(manifest)} plural={plural} linkSeed={lineupLink} />
     </Box>
   )
 

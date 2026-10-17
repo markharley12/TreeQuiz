@@ -32,6 +32,9 @@ export interface CatalogueTree {
    *  `info-<n>.json`. Null for a remote tree this build did not have — its
    *  files are on the website, and the live catalogue there says where. */
   files: Record<string, CatalogueFile> | null
+  /** How many leaves its tree has, when the build had the tree: what the
+   *  slider's last mark says, without loading the tree to count them. */
+  leaves?: number
   /** Shipped inside the app, so on the device from install and never
    *  downloaded. Only an app build (VITE_DATA_BASE set) bundles anything. */
   bundled?: boolean

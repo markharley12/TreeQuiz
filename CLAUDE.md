@@ -16,15 +16,16 @@ making this repo a superset of TaxoQuiz.
 ## Status
 
 Nine datasets — **maths** (MSC2020, 517 fields), **languages** (Glottolog,
-415), **instruments** (Hornbostel–Sachs, 428), **animals** (TaxoQuiz's 530),
-**chess** (Lichess, 446 openings), **physics** (PhySH, 487 topics),
-**chemistry** (ChEBI, 465 chemicals), **cities** (Wikidata and Natural
-Earth, 622), **plants** (Wikidata's taxonomy, 469) — plus **animals-full**
-(TaxoQuiz Full, 41,153 species), which is a *remote* tree: only its manifest
-is committed (see below). Three games: the guessing round, odd one out and
+415), **instruments** (Hornbostel–Sachs, 428), **animals** (TaxoQuiz Full,
+Wikidata's 41,153 species, played from 500 up), **chess** (Lichess, 446
+openings), **physics** (PhySH, 487 topics), **chemistry** (ChEBI, 465
+chemicals), **cities** (Wikidata and Natural Earth, 622), **plants**
+(Wikidata's taxonomy, 469). Animals is a *remote* tree: only its manifest is
+committed (see below). Three games: the guessing round, odd one out and
 line-up. Any tree whose leaves carry `fame` can be played at a chosen size
 (the slider, below), and trees are downloads the player chooses and can
-delete. Python suite 365 tests, frontend 560, both green. The repo is on
+delete. Python suite 365 tests (359 on a clean clone, without animals'
+files), frontend 561, both green. The repo is on
 GitHub and public. No Android build yet (phase 5 of the merge plan;
 `docs/android.md`).
 
@@ -51,16 +52,30 @@ Manifests are hand-written and builders never touch them. `checks.closer` is the
 data's test: orderings of relatedness that a correct tree must reproduce,
 keyed by node **name**, since labels drift.
 
-## Remote trees: animals-full
+## Remote trees: animals
 
 A manifest with **`release`** names a GitHub Release holding the tree's built
 files; the files are gitignored, built on one machine and fetched elsewhere.
-animals-full is the first (`datagen/build_animals_full.py`, from the pipeline
+Animals is the first (`datagen/build_animals_full.py`, from the pipeline
 in `datagen/animals_full/`, seeded from TaxoQuiz's caches so no rescrape is
 needed; `datagen/publish_release.py` uploads, and only on `--yes`). Its leaves
 carry **`fame`** (Wikidata sitelinks), its manifest **`sizes`**, and its popup
 text is split into tiers, `info-<n>.json` at each stop, by when a node enters
 the tree cut to `n`; the contract is in `docs/taxoquiz-merge-plan.md`.
+
+**It shipped as `animals-full`** ("All animals") beside TaxoQuiz's curated 530
+as `animals`, until it took the name (17 Oct 2026): at 500 it is the same
+idea, on Wikidata's finer tree. The 530 are now a **test fixture**,
+`tests/fixtures/animals-530/`, which most of the app's tests play on (lion is
+their secret) and the conformance file still covers; `vite.config.ts` lists
+`tests/fixtures/` only in a test run, and Python loads it with
+`dataset.load(id, FIXTURES)`. The release keeps its tag,
+`animals-full-2026-10-17`, and the pipeline its work directory,
+`datagen/_cache/animals-full/` (`taxo.WORK_ID`). A device's copy of either
+old tree is deleted on load (`gone()` in `downloads.ts`): one whose id is
+gone, or whose tree became sized or stopped being — a different game under
+the same name, which would otherwise have played on behind an Update button.
+Links to `?d=animals-full` from that first day no longer open.
 
 A remote tree is in the app and the Python checks when its files are present,
 and **never in the conformance file**: `tests/conformance.py` and
@@ -167,30 +182,33 @@ drops internal nodes left empty. **Pass-throughs stay**, as TaxoQuiz's
 threshold builds left them (`extract_game_tree.py` merges only a child named
 as its parent), and that keeps a node, once in, in at every bigger size —
 which the info tiers rely on. Everything — warmth, seeds, hints, both set
-games, explore — runs on the cut tree. On animals-full the cut reproduces the
+games, explore — runs on the cut tree. On animals the cut reproduces the
 plan's measured table exactly (500 leaves → 1,692 nodes … 20,000 → 29,605),
 in ~150ms a cut in Python.
 
 - **The size is part of the game.** A game is named `<tree>@<size>`
-  (`animals-full@2000`, `@all`; `gameId.ts`) and that name goes wherever a
+  (`animals@2000`, `@all`; `gameId.ts`) and that name goes wherever a
   tree's id went: storage keys, the info cache, the API, a `GameContext` for
   the trees and popups. So sessions, explore, set games, tallies and dailies
   are all per tree and size, and an **unsized tree's game is its bare id**,
   keys unchanged. The size chosen is a setting per tree (`settings.sizes`),
   checked against the stops on read, so a link or storage cannot make one up.
-- **The daily is always at `sizes.default`**, so everyone plays the same one.
-  At another size "Today's animal" reads the default size's round and record
-  and switches the slider there to play (`nav.daily`); odd one out and
-  line-up deal no today's set away from the default (`useSetGame`'s `daily`).
+- **Every size has its own daily**, as it has its own everything else: the
+  daily's seed is the day's body on the cut's fingerprint, so everyone at
+  5,000 today plays the same round, a different one from 2,000's. Until 17
+  Oct 2026 the daily was only ever at `sizes.default` and other sizes sent
+  the player there; the owner wanted it playable at any size.
 - **Seeds need nothing new**: the fingerprint covers the cut's leaves, so a
   seed dealt at 2,000 is refused at 5,000 (tested in Python). Links carry
   `&n=`; a rejected seed is looked up across every tree *and stop*
   (`datasetForSeed`), and the error says "a different size" with "Play it
   there".
 - **The slider** (`SizeSlider.tsx`) is MUI's, on the logarithm of the size,
-  `step={null}` so it snaps to the stops, and "All" a doubling past the last
-  stop: the leaf count is unknown until the tree loads, and the front page
-  should not load 6MB to draw a mark. Letting go is a switch, like picking a
+  `step={null}` so it snaps to the stops. The last mark is the whole tree,
+  labelled with its count ("41k", and "Every one of the 41,153 animals")
+  and placed at it: the build counts each tree's leaves into the catalogue
+  (`leaves`), since the front page should not load 6MB to draw a mark. A
+  build without the tree's files says "All", a doubling past the last stop. Letting go is a switch, like picking a
   tree: the round remounts on the new game.
 - **Popup text in tiers**: `info-<n>.json` holds the nodes a cut to `n` adds
   to the stop before, the last tier named for the leaf count (`size.tiers`
@@ -200,7 +218,7 @@ in ~150ms a cut in Python.
   leaves only), stops rising from `min`, the last below the leaf count, and
   warmth and the orderings on each cut. Not the share of rank claims
   rejected: the cut keeps the high nodes where rejections sit and drops the
-  genera, so animals-full's 1.4% read as 12% at 500.
+  genera, so animals' 1.4% read as 12% at 500.
 - **Conformance**: the cut on a synthetic fame tree at eight sizes (with its
   fingerprint and warmth), and a sized shipped tree's cases at `sizes.min`,
   since whole-tree warmth on 57,000 nodes would be megabytes. 1,207KB.
@@ -382,16 +400,17 @@ the baseline's took the same 3.7s under the same load.
   subgroups and dialects. A famous dialect names its language (derived); a
   famous subgroup names its standard variety (`STANDARD_VARIETY`, checked).
   Without both, Persian, Arabic, Hebrew and Swahili were missing.
-- **Animals** is converted from TaxoQuiz's committed example by
-  `build_animals.py`; it reads `../TaxoQuiz` by default (in a worktree, pass
-  `--taxoquiz`). It is coarser than Wikidata's tree: no Neognathae, no
-  Osteichthyes, so a sparrow is as near an ostrich as a pigeon.
-- **Animals-full** (`datagen/animals_full/README.md`, `docs/animals-full.md`):
+- **Animals** (`datagen/animals_full/README.md`, `docs/animals-full.md`):
   TaxoQuiz's Wikidata pipeline, ported with its tests; `taxo.py` stands in for
   TaxoQuiz's package and `net.py` for `requests`. The bat chain's kangaroo is
   a Tasmanian devil in its manifest, because Wikidata prefers Mammalia as
   Diprotodontia's parent (an upstream lead), and its sponge is *Desmacella
-  annexa*, since Full has no *Spongia*.
+  annexa*, since Full has no *Spongia*. The builder reads `../TaxoQuiz` by
+  default (in a worktree, pass `--taxoquiz`). The test fixture `animals-530`
+  is TaxoQuiz's committed example, converted once by the builder deleted with
+  it (`build_animals.py`, in git history): coarser than Wikidata's tree, with
+  no Neognathae and no Osteichthyes, so a sparrow is as near an ostrich as a
+  pigeon.
 - **Instruments** (`build_instruments.py`, whose docstring has every decision):
   Wikidata's P1762 codes at ≥12 sitelinks; class names from Wikipedia's four
   *List of …phones by Hornbostel–Sachs number* articles, which win over the

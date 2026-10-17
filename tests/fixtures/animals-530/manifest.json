@@ -1,9 +1,9 @@
 {
-  "order": 10,
-  "title": "Animals of Wikidata",
-  "short_title": "All animals",
-  "prompt": "Guess the secret animal among tens of thousands, from the lion to the obscurest beetle.",
-  "blurb": "Up to 41,000 species from Wikidata's tree of life. Start with the 2,000 best known, or slide out to every one.",
+  "order": 99,
+  "title": "530 animals (test tree)",
+  "short_title": "530 animals",
+  "prompt": "Guess the secret animal by its place in the tree of life.",
+  "blurb": "TaxoQuiz's 530 species on its hand-curated taxonomy: a test fixture, not shipped.",
   "noun": "animal",
   "noun_plural": "animals",
   "ladder": {
@@ -62,33 +62,11 @@
   },
   "bulk_unlock": 0.5,
   "info_source": "Wikipedia",
-  "sizes": {
-    "min": 500,
-    "default": 2000,
-    "stops": [
-      500,
-      1000,
-      2000,
-      5000,
-      10000,
-      20000
-    ]
-  },
-  "release": "animals-full-2026-10-17",
   "sources": [
     {
-      "name": "Wikidata",
-      "url": "https://www.wikidata.org",
-      "licence": "CC0",
-      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "note": "The species, chosen by how many Wikipedias cover them, their names and their parent taxa"
-    },
-    {
-      "name": "Catalogue of Life",
-      "url": "https://www.catalogueoflife.org",
-      "licence": "CC BY 4.0",
-      "licence_url": "https://creativecommons.org/licenses/by/4.0/",
-      "note": "A second opinion on synonyms: a species is merged into another only when Wikidata and the Catalogue agree"
+      "name": "TaxoQuiz example taxonomy",
+      "url": "https://github.com/markharley12/TaxoQuiz",
+      "note": "Hand-curated NCBI-style tree with a clade layer above the phyla"
     },
     {
       "name": "Wikipedia",
@@ -110,7 +88,7 @@
           "Asterias rubens",
           "Vespula vulgaris",
           "Acropora cervicornis",
-          "Desmacella annexa"
+          "Spongia officinalis"
         ]
       },
       {
@@ -130,7 +108,7 @@
         "order": [
           "Canis lupus",
           "Homo sapiens",
-          "Sarcophilus harrisii",
+          "Macropus rufus",
           "Ornithorhynchus anatinus",
           "Crocodylus niloticus",
           "Rana temporaria"
@@ -144,28 +122,6 @@
           "Homo sapiens",
           "Carcharodon carcharias",
           "Lumbricus terrestris"
-        ]
-      },
-      {
-        "to": "Passer domesticus",
-        "order": [
-          "Corvus corax",
-          "Columba livia",
-          "Struthio camelus",
-          "Crocodylus niloticus",
-          "Homo sapiens",
-          "Salmo salar"
-        ]
-      },
-      {
-        "to": "Salmo salar",
-        "order": [
-          "Oncorhynchus mykiss",
-          "Esox lucius",
-          "Gadus morhua",
-          "Latimeria chalumnae",
-          "Carcharodon carcharias",
-          "Petromyzon marinus"
         ]
       }
     ]

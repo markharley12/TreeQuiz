@@ -31,6 +31,8 @@ function tiersOf(id: string): InfoTier[] {
 export interface DatasetEntry {
   id: string
   manifest: Manifest
+  /** Its leaf count, if the build had the tree. */
+  leaves?: number
 }
 
 /** Every dataset there is — on the device or not — in picker order. A remote
@@ -38,7 +40,7 @@ export interface DatasetEntry {
  *  since then the website has it. */
 export const DATASETS: DatasetEntry[] = [...BAKED.values()]
   .filter((d) => d.files || d.manifest.release)
-  .map(({ id, manifest }) => ({ id, manifest }))
+  .map(({ id, manifest, leaves }) => ({ id, manifest, leaves }))
   .sort((a, b) => (a.manifest.order ?? 99) - (b.manifest.order ?? 99) || (a.id < b.id ? -1 : 1))
 
 export const DEFAULT_DATASET = DATASETS[0]?.id ?? ''

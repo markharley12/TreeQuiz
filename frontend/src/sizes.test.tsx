@@ -1,10 +1,9 @@
 /**
  * A sized tree in the app: the game's name, the size remembered per tree,
  * the cut loaded once a size, and on the front page the slider, rounds kept
- * per size, and the daily always at the default.
+ * per size, and a daily at every size.
  *
- * No shipped tree is sized (animals-full's files live in a release, not in
- * git), so the registry is stubbed with one that is, beside one that is not.
+ * No tree in git is sized (animals' files live in a release, not in git), so the registry is stubbed with one that is, beside one that is not.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -16,7 +15,7 @@ const startOddSet = vi.fn()
 
 const SIZES = { min: 500, default: 2000, stops: [500, 1000, 2000] }
 const ENTRIES = [
-  { id: 'trees', manifest: { title: 'Trees', short_title: 'Trees', noun: 'tree', noun_plural: 'trees', prompt: 'Guess the tree.', sizes: SIZES } as Manifest },
+  { id: 'trees', leaves: 41153, manifest: { title: 'Trees', short_title: 'Trees', noun: 'tree', noun_plural: 'trees', prompt: 'Guess the tree.', sizes: SIZES } as Manifest },
   { id: 'plain', manifest: { title: 'Plain', short_title: 'Plain', noun: 'leaf', noun_plural: 'leaves', prompt: 'Guess the leaf.' } as Manifest },
 ]
 
@@ -83,22 +82,32 @@ describe('the size played', () => {
   })
 
   it('is the one last chosen, else the default; none for an unsized tree', async () => {
-    const { chooseSize, chosenSize, dailyGame } = await import('./sizes')
+    const { chooseSize, chosenSize, chosenGame } = await import('./sizes')
     expect(chosenSize('trees')).toBe(2000)
     chooseSize('trees', 'all')
     expect(chosenSize('trees')).toBe('all')
     expect(chosenSize('trees', { trees: 1500 })).toBe(2000)
     expect(chosenSize('plain')).toBeNull()
-    expect(dailyGame('trees')).toBe('trees@2000')
-    expect(dailyGame('plain')).toBe('plain')
+    expect(chosenGame('trees')).toBe('trees@all')
+    expect(chosenGame('plain')).toBe('plain')
   })
 
-  it('reads on a log scale, with the whole tree a doubling past the last stop', async () => {
+  it('reads on a log scale, with the whole tree a doubling past the last stop when uncounted', async () => {
     const { sliderMarks } = await import('./sizes')
     const marks = sliderMarks(SIZES)
     expect(marks.map((m) => m.label)).toStrictEqual(['500', '1k', '2k', 'All'])
     expect(marks.map((m) => m.size)).toStrictEqual([500, 1000, 2000, 'all'])
     expect(marks[1].value - marks[0].value).toBeCloseTo(marks[3].value - marks[2].value)
+  })
+
+  it('says how many the whole tree has, and puts it there, once counted', async () => {
+    const { sliderMarks, shortSize, sizeText } = await import('./sizes')
+    const marks = sliderMarks(SIZES, 41153)
+    expect(marks.map((m) => m.label)).toStrictEqual(['500', '1k', '2k', '41k'])
+    expect(marks[3].value).toBeCloseTo(Math.log(41153))
+    expect(sizeText('all', 41153)).toBe('all 41,153')
+    expect(shortSize('all', 2500)).toBe('2,500')
+    expect(shortSize('all', 20000)).toBe('20k')
   })
 })
 
@@ -144,6 +153,7 @@ describe('the front page of a sized tree', () => {
     const slider = screen.getByRole('slider', { name: 'How many to play with' })
     expect(slider.getAttribute('aria-valuetext')).toBe('2,000')
     expect(screen.getByText('The 2,000 best-known trees.')).toBeTruthy()
+    expect(screen.getByText('41k')).toBeTruthy()
     cleanup()
     playOn('plain')
     vi.resetModules()
@@ -154,7 +164,7 @@ describe('the front page of a sized tree', () => {
   it('keeps the size chosen, and plays a round of that size under its own key', async () => {
     await renderApp()
     fireEvent.keyDown(screen.getByRole('slider'), { key: 'ArrowLeft' })
-    await waitFor(() => expect(screen.getByText(/The 1,000 best-known trees\. Today’s is always from the 2,000\./)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('The 1,000 best-known trees.')).toBeTruthy())
     expect(JSON.parse(localStorage.getItem('treequiz:settings')!).sizes).toStrictEqual({ trees: 1000 })
     fireEvent.click(screen.getByRole('button', { name: 'Practice' }))
     await waitFor(() => expect(startRound).toHaveBeenCalledWith('trees@1000', { daily: false, seed: undefined }))
@@ -163,35 +173,33 @@ describe('the front page of a sized tree', () => {
     expect(localStorage.getItem('treequiz:session:trees@2000')).toBeNull()
   })
 
-  it('plays today’s round at the default size, whatever size is chosen', async () => {
+  it('plays today’s round at the size chosen', async () => {
     playOn('trees', { trees: 500 })
     await renderApp()
     fireEvent.click(screen.getByRole('button', { name: /Today’s tree/ }))
-    await waitFor(() => expect(startRound).toHaveBeenCalledWith('trees@2000', { daily: true, seed: undefined }))
-    expect(await screen.findByText('Daily · 2k')).toBeTruthy()
-    expect(JSON.parse(localStorage.getItem('treequiz:settings')!).sizes).toStrictEqual({ trees: 2000 })
+    await waitFor(() => expect(startRound).toHaveBeenCalledWith('trees@500', { daily: true, seed: undefined }))
+    expect(await screen.findByText('Daily · 500')).toBeTruthy()
+    expect(JSON.parse(localStorage.getItem('treequiz:settings')!).sizes).toStrictEqual({ trees: 500 })
   })
 
-  it('shows today’s round as done at any size once the default size has it', async () => {
+  it('keeps today’s round per size', async () => {
     playOn('trees', { trees: 500 })
     localStorage.setItem('treequiz:daily:trees@2000', JSON.stringify({
       [today()]: { seed: 'AAAA-234567', guesses: ['oak'], warmths: [1], hints: 0, hintPoints: 0, won: true },
     }))
     await renderApp()
+    expect(screen.getByRole('button', { name: 'Today’s tree' })).toBeTruthy()
+    cleanup()
+    playOn('trees', { trees: 2000 })
+    vi.resetModules()
+    await renderApp()
     expect(screen.getByRole('button', { name: 'Today’s tree ✓' })).toBeTruthy()
   })
 
-  it('deals no today’s set away from the default size', async () => {
+  it('deals today’s set at any size', async () => {
     playOn('trees', { trees: 500 })
     await renderApp()
     fireEvent.click(screen.getByRole('button', { name: 'Odd one out' }))
-    await waitFor(() => expect(startOddSet).toHaveBeenCalledWith('trees@500', { seed: undefined, daily: false }))
-    expect(screen.queryByRole('button', { name: /Today’s set/ })).toBeNull()
-  })
-
-  it('deals today’s set at the default size', async () => {
-    await renderApp()
-    fireEvent.click(screen.getByRole('button', { name: 'Odd one out' }))
-    await waitFor(() => expect(startOddSet).toHaveBeenCalledWith('trees@2000', { seed: undefined, daily: true }))
+    await waitFor(() => expect(startOddSet).toHaveBeenCalledWith('trees@500', { seed: undefined, daily: true }))
   })
 })

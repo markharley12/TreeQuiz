@@ -1,6 +1,6 @@
 /**
  * A game's name: a tree, and for a sized tree the size it is played at —
- * `animals-full@2000`, `animals-full@all`; an unsized tree's game is its id.
+ * `animals@2000`, `animals@all`; an unsized tree's game is its id.
  * Why the size is part of the name is in sizes.ts. Kept apart from it, with no
  * imports, so a link can be read without loading the registry.
  */

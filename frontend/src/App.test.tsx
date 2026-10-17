@@ -67,8 +67,9 @@ let nextGuess = 'tiger'
 /** What the stubbed GuessInput hands over as a bulk guess. */
 let nextBulk = ['cheetah', 'lion']
 
-// The rounds below are animals: lion is the secret. Each tree keeps its own.
-const DATASET = 'animals'
+// The rounds below are on the test tree of 530 animals (tests/fixtures/): lion
+// is the secret. Each tree keeps its own.
+const DATASET = 'animals-530'
 const STORAGE_KEY = `treequiz:session:${DATASET}`
 const playOn = (id: string) => localStorage.setItem('treequiz:settings', JSON.stringify({ dataset: id }))
 const today = () => new Date().toISOString().slice(0, 10)
@@ -332,8 +333,7 @@ describe('going home', () => {
     // Maths has no round, so no resume, and its own words.
     expect(await screen.findByRole('button', { name: /today.s field/i })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /resume/i })).toBeNull()
-    // Anchored: "All animals", a tree built locally, is a radio too.
-    fireEvent.click(screen.getByRole('radio', { name: /^animals/i }))
+    fireEvent.click(screen.getByRole('radio', { name: /^530 animals/i }))
     expect(await screen.findByRole('button', { name: /resume your round/i })).toBeTruthy()
   })
 })
@@ -441,7 +441,7 @@ describe('shared links', () => {
     await renderApp()
     fireEvent.click(screen.getByRole('button', { name: /practice/i }))
     fireEvent.click(await screen.findByRole('button', { name: /link to this round/i }))
-    await waitFor(() => expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/?d=animals&seed=RZVM-X6N69Q`))
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/?d=animals-530&seed=RZVM-X6N69Q`))
     vi.unstubAllGlobals()
   })
 
@@ -600,7 +600,7 @@ describe('odd one out', () => {
     expect(await screen.findByText('RZVM-0DD5E7')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /grey wolf/i }))
     expect(await screen.findByText('Right.')).toBeTruthy()
-    expect(JSON.parse(localStorage.getItem('treequiz:odd:animals')!)).toEqual({ seed: 'RZVM-0DD5E7', answers: ['grey wolf'], day: today() })
+    expect(JSON.parse(localStorage.getItem('treequiz:odd:animals-530')!)).toEqual({ seed: 'RZVM-0DD5E7', answers: ['grey wolf'], day: today() })
   })
 
   it('says which it was after a wrong pick', async () => {
@@ -611,7 +611,7 @@ describe('odd one out', () => {
   })
 
   it("opens a link's set, and comes back to it on a reload", async () => {
-    arriveAt('?d=animals&odd=RZVM-ABCDEF')
+    arriveAt('?d=animals-530&odd=RZVM-ABCDEF')
     await renderApp()
     expect(await screen.findByText('RZVM-ABCDEF')).toBeTruthy()
     expect(startOddSet).toHaveBeenCalledWith(DATASET, expect.objectContaining({ seed: 'RZVM-ABCDEF' }))
@@ -624,17 +624,17 @@ describe('odd one out', () => {
   })
 
   it('scores a finished set and counts it once', async () => {
-    localStorage.setItem('treequiz:odd:animals', JSON.stringify({ seed: 'RZVM-0DD5E7', answers: [...Array(9).fill('grey wolf'), 'lion'] }))
-    localStorage.setItem('treequiz:view:animals', 'odd')
+    localStorage.setItem('treequiz:odd:animals-530', JSON.stringify({ seed: 'RZVM-0DD5E7', answers: [...Array(9).fill('grey wolf'), 'lion'] }))
+    localStorage.setItem('treequiz:view:animals-530', 'odd')
     // Today's set already played, or it would be dealt in place of a finished set.
-    localStorage.setItem('treequiz:odddaily:animals', JSON.stringify({ [today()]: { seed: 'RZVM-DA1E77', answers: [], right: 5 } }))
+    localStorage.setItem('treequiz:odddaily:animals-530', JSON.stringify({ [today()]: { seed: 'RZVM-DA1E77', answers: [], right: 5 } }))
     await renderApp()
     expect(await screen.findByText('9 of 10')).toBeTruthy()
     expect(screen.getByLabelText('Your marks').textContent).toBe('✅'.repeat(9) + '❌')
     cleanup()
     await renderApp()
     await screen.findByText('9 of 10')
-    expect(JSON.parse(localStorage.getItem('treequiz:oddtally:animals')!)).toMatchObject({ sets: 1, right: 9, best: 9 })
+    expect(JSON.parse(localStorage.getItem('treequiz:oddtally:animals-530')!)).toMatchObject({ sets: 1, right: 9, best: 9 })
   })
 
   it("deals today's set first, and keeps it as the day's once finished", async () => {
@@ -648,11 +648,11 @@ describe('odd one out', () => {
       fireEvent.click(await screen.findByRole('button', { name: i < 9 ? /^next$/i : /see your score/i }))
     }
     expect(await screen.findByText('10 of 10')).toBeTruthy()
-    expect(JSON.parse(localStorage.getItem('treequiz:odddaily:animals')!)[today()]).toMatchObject({ seed: 'RZVM-0DD5E7', right: 10 })
+    expect(JSON.parse(localStorage.getItem('treequiz:odddaily:animals-530')!)[today()]).toMatchObject({ seed: 'RZVM-0DD5E7', right: 10 })
   })
 
   it("does not deal today's set twice: a finished day's set opens on its score", async () => {
-    localStorage.setItem('treequiz:odddaily:animals', JSON.stringify({ [today()]: {
+    localStorage.setItem('treequiz:odddaily:animals-530', JSON.stringify({ [today()]: {
       seed: 'RZVM-0DD5E7', answers: Array(10).fill('lion'), right: 0 } }))
     await renderApp()
     fireEvent.click(screen.getByRole('button', { name: /odd one out/i }))
@@ -661,7 +661,7 @@ describe('odd one out', () => {
   })
 
   it("deals a link's set once: going home and back resumes the set in progress", async () => {
-    arriveAt('?d=animals&odd=RZVM-ABCDEF')
+    arriveAt('?d=animals-530&odd=RZVM-ABCDEF')
     await renderApp()
     await screen.findByText('RZVM-ABCDEF')
     fireEvent.click(screen.getByRole('button', { name: /new set/i }))
@@ -673,13 +673,13 @@ describe('odd one out', () => {
   })
 
   it("does not count today's set again when it is reopened", async () => {
-    localStorage.setItem('treequiz:odddaily:animals', JSON.stringify({ [today()]: {
+    localStorage.setItem('treequiz:odddaily:animals-530', JSON.stringify({ [today()]: {
       seed: 'RZVM-0DD5E7', answers: Array(10).fill('grey wolf'), right: 10 } }))
-    localStorage.setItem('treequiz:oddtally:animals', JSON.stringify({ sets: 2, right: 15, best: 10, last: 'RZVM-OTHER1' }))
+    localStorage.setItem('treequiz:oddtally:animals-530', JSON.stringify({ sets: 2, right: 15, best: 10, last: 'RZVM-OTHER1' }))
     await renderApp()
     fireEvent.click(screen.getByRole('button', { name: /odd one out/i }))
     expect(await screen.findByText('10 of 10')).toBeTruthy()
-    expect(JSON.parse(localStorage.getItem('treequiz:oddtally:animals')!)).toMatchObject({ sets: 2, right: 15 })
+    expect(JSON.parse(localStorage.getItem('treequiz:oddtally:animals-530')!)).toMatchObject({ sets: 2, right: 15 })
   })
 
   it('reports a seed from another tree instead of dealing nothing', async () => {
@@ -708,7 +708,7 @@ describe('line-up', () => {
     expect(screen.getByRole('button', { name: /moon jelly, placed 4th/i })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /^check$/i }))
     expect(await screen.findByText('All four in place.')).toBeTruthy()
-    expect(JSON.parse(localStorage.getItem('treequiz:lineup:animals')!)).toEqual({ seed: 'RZVM-L1NEUP', answers: [RIGHT], day: today() })
+    expect(JSON.parse(localStorage.getItem('treequiz:lineup:animals-530')!)).toEqual({ seed: 'RZVM-L1NEUP', answers: [RIGHT], day: today() })
   })
 
   it('takes a placed name back, with every name placed after it', async () => {
@@ -735,7 +735,7 @@ describe('line-up', () => {
   })
 
   it("opens a link's set, and takes the link out of the address", async () => {
-    arriveAt('?d=animals&lineup=RZVM-ABCDEF')
+    arriveAt('?d=animals-530&lineup=RZVM-ABCDEF')
     await renderApp()
     expect(await screen.findByText('RZVM-ABCDEF')).toBeTruthy()
     expect(startLineUp).toHaveBeenCalledWith(DATASET, expect.objectContaining({ seed: 'RZVM-ABCDEF' }))
@@ -744,16 +744,16 @@ describe('line-up', () => {
 
   it('scores a finished set out of twenty and counts it once', async () => {
     const wrong = ['grey wolf', 'tiger', 'human', 'moon jelly']
-    localStorage.setItem('treequiz:lineup:animals', JSON.stringify({ seed: 'RZVM-L1NEUP', answers: [RIGHT, RIGHT, RIGHT, RIGHT, wrong] }))
-    localStorage.setItem('treequiz:view:animals', 'lineup')
-    localStorage.setItem('treequiz:lineupdaily:animals', JSON.stringify({ [today()]: { seed: 'RZVM-DA1E77', answers: [], right: 5 } }))
+    localStorage.setItem('treequiz:lineup:animals-530', JSON.stringify({ seed: 'RZVM-L1NEUP', answers: [RIGHT, RIGHT, RIGHT, RIGHT, wrong] }))
+    localStorage.setItem('treequiz:view:animals-530', 'lineup')
+    localStorage.setItem('treequiz:lineupdaily:animals-530', JSON.stringify({ [today()]: { seed: 'RZVM-DA1E77', answers: [], right: 5 } }))
     await renderApp()
     expect(await screen.findByText('18 of 20')).toBeTruthy()
     expect(screen.getByLabelText('Your places').textContent).toBe('🟩🟩🟩🟩'.repeat(4) + '🟥🟥🟩🟩')
     cleanup()
     await renderApp()
     await screen.findByText('18 of 20')
-    expect(JSON.parse(localStorage.getItem('treequiz:lineuptally:animals')!)).toMatchObject({ sets: 1, right: 18, best: 18 })
+    expect(JSON.parse(localStorage.getItem('treequiz:lineuptally:animals-530')!)).toMatchObject({ sets: 1, right: 18, best: 18 })
   })
 
   it("keeps today's set as the day's once finished, apart from odd one out's", async () => {
@@ -766,7 +766,7 @@ describe('line-up', () => {
       fireEvent.click(await screen.findByRole('button', { name: i < 4 ? /^next$/i : /see your score/i }))
     }
     expect(await screen.findByText('20 of 20')).toBeTruthy()
-    expect(JSON.parse(localStorage.getItem('treequiz:lineupdaily:animals')!)[today()]).toMatchObject({ seed: 'RZVM-L1NEUP', right: 20 })
-    expect(localStorage.getItem('treequiz:odddaily:animals')).toBeNull()
+    expect(JSON.parse(localStorage.getItem('treequiz:lineupdaily:animals-530')!)[today()]).toMatchObject({ seed: 'RZVM-L1NEUP', right: 20 })
+    expect(localStorage.getItem('treequiz:odddaily:animals-530')).toBeNull()
   })
 })

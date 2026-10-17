@@ -28,16 +28,13 @@ interface Props {
   plural: string
   /** A set's seed from a link, to deal instead of resuming. */
   linkSeed: string | null
-  /** Whether this game has today's set: on a sized tree, only its default
-   *  size does (sizes.ts), and any other deals ordinary sets only. */
-  daily: boolean
 }
 
 /** A set runs easy to hard; see `treequiz/lineup.py`. */
 const TIERS = ['Easy', 'Medium', 'Hard']
 
-export default function LineUp({ dataset, title, plural, linkSeed, daily }: Props) {
-  const game = useSetGame<Puzzle, string[]>({ game: 'lineup', dataset, linkSeed, daily, size: SET_SIZE, start: startLineUp, points: score })
+export default function LineUp({ dataset, title, plural, linkSeed }: Props) {
+  const game = useSetGame<Puzzle, string[]>({ game: 'lineup', dataset, linkSeed, size: SET_SIZE, start: startLineUp, points: score })
   const { set, shown, puzzle, answered, today, day, dailies, tally } = game
   const key = set ? `${set.seed}:${shown}` : ''
   // The order being built, for the puzzle it was built on.
@@ -108,7 +105,7 @@ export default function LineUp({ dataset, title, plural, linkSeed, daily }: Prop
   return (
     <Box sx={{ overflowY: 'auto', flex: '1 0 0', minHeight: 0, pb: 3 }}>
       <SetHeader
-        seed={set.seed} link={link} offerToday={daily && day !== today} todayDone={Boolean(dailies[today])}
+        seed={set.seed} link={link} offerToday={day !== today} todayDone={Boolean(dailies[today])}
         onToday={() => game.deal(game.todays())} onNew={() => game.deal()}
       />
 
@@ -127,7 +124,7 @@ export default function LineUp({ dataset, title, plural, linkSeed, daily }: Prop
           tallyText={tally.sets === 0 ? null : (tally.sets === 1 ? 'Your first set on this tree.'
             : `${tally.sets} sets on this tree: ${(tally.right / tally.sets).toFixed(1)} of ${outOf} in place on average, best ${tally.best}.`)
             + (setStreak(dailies, today) > 1 ? ` Today’s set ${setStreak(dailies, today)} days running.` : '')}
-          offerToday={daily && day !== today && !dailies[today]}
+          offerToday={day !== today && !dailies[today]}
           onToday={() => game.deal(game.todays())}
         />
       ) : puzzle && (

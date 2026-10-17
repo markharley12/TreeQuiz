@@ -1,8 +1,8 @@
 """datagen/animals_full/validate_dataset.py: the checks a staging tree must pass.
 
 Ported from TaxoQuiz's test_dataset_integrity.py. There it ran over the example
-the game shipped; here the same 530-species tree ships as `datasets/animals`,
-converted back to the staging shape below, and TreeQuiz's own validator covers
+the game shipped; here the same 530-species tree is a test fixture,
+`tests/fixtures/animals-530` (it shipped as `animals` until Oct 2026), converted back to the staging shape below, and TreeQuiz's own validator covers
 the converted trees (tests/test_datasets.py). What stays is what a staging tree
 can get wrong that a TreeQuiz tree cannot say: a leaf that is not a species, and
 common names that collide.
@@ -24,11 +24,12 @@ from validate_dataset import check_biology, check_shape, check_warmth, validate 
 
 
 REPO = Path(__file__).resolve().parents[1]
+FIXTURE = REPO / "tests" / "fixtures" / "animals-530"
 
 
 @pytest.fixture
 def example_tree():
-    """TaxoQuiz's example, as `datasets/animals` holds it, in the staging shape:
+    """TaxoQuiz's example, as `tests/fixtures/animals-530` holds it, in the staging shape:
     what is guessed is `common_name` there and `label` here."""
     def back(n):
         out = {k: v for k, v in n.items() if k not in ("label", "aliases", "children")}
@@ -37,7 +38,7 @@ def example_tree():
         else:
             out["common_name"] = n.get("label", n["name"])
         return out
-    return back(json.loads((REPO / "datasets" / "animals" / "tree.json").read_text()))
+    return back(json.loads((FIXTURE / "tree.json").read_text()))
 
 
 def node(name, rank, *children):
@@ -54,11 +55,11 @@ def node(name, rank, *children):
 def test_the_packaged_example_passes_every_check(example_tree):
     """The one that would have caught the flat tree, and the whole point of the
     file: it runs against what a fresh clone plays on."""
-    # Held to its own manifest's orderings: animals-full adds two (a sparrow
+    # Held to its own manifest's orderings: animals (Wikidata's) adds two (a sparrow
     # nearer a pigeon than an ostrich, a salmon nearer a coelacanth than a
     # shark) that the curated tree is too coarse to pass, having no
     # Neognathae and no Osteichthyes.
-    chains = validate_dataset.ground_truth(REPO / "datasets" / "animals" / "manifest.json")
+    chains = validate_dataset.ground_truth(FIXTURE / "manifest.json")
     report = validate(example_tree, "example",
                       checks=(check_shape, check_warmth, lambda t, r: check_biology(t, r, chains)))
     assert report.ok, report.failures
