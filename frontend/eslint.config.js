@@ -14,7 +14,7 @@ export default defineConfig([
   // generated JavaScript (the native bridge, and copies of dist/) that is not
   // ours to lint. Lint passed until the first APK build created those files,
   // so a clean checkout — CI included — would never show the failure.
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'android']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

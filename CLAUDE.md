@@ -25,9 +25,10 @@ committed (see below). Three games: the guessing round, odd one out and
 line-up. Any tree whose leaves carry `fame` can be played at a chosen size
 (the slider, below), and trees are downloads the player chooses and can
 delete. Python suite 365 tests (359 on a clean clone, without animals'
-files), frontend 561, both green. The repo is on
-GitHub and public. No Android build yet (phase 5 of the merge plan;
-`docs/android.md`).
+files), frontend 570, both green. The repo is on
+GitHub and public. An Android app (Capacitor; `npm run android:apk`, phase 5
+of the merge plan) is in `frontend/android/`; `docs/android.md` has how it is
+built and what it does differently.
 
 Run with `env -u PYTHONPATH` on this machine: ROS's `PYTHONPATH` drags its own
 pytest plugins in and collection aborts (`No module named 'osrf_pycommon'`).
@@ -383,7 +384,14 @@ no entry yet.
 The Pages workflow's release step ran on the first deploy with
 `animals-full-2026-10-17`, and the live site downloaded and played it.
 
-**Not verified**: the app build (`VITE_DATA_BASE`) beyond the unit test, and two tabs at once
+**The worker ignores `Vary`** when matching its cache: Vite's preview answers
+`Vary: Origin`, a module script's request carries an Origin the install's did
+not, so every module missed the cache and, after a rebuild, fetched a file the
+server no longer had — a blank page. GitHub Pages sends only `Vary:
+Accept-Encoding`, so the live site was never hit; found testing the app build.
+
+**Not verified**: the app build (`VITE_DATA_BASE`) on a phone — run in a
+browser it lists the bundled trees and learns of Animals from the site — and two tabs at once
 (a `BroadcastChannel` re-reads copies in the other tab). The first test in
 `App.test.tsx` and `GuessInput.test.tsx` can pass 5s on a loaded machine —
 the baseline's took the same 3.7s under the same load.

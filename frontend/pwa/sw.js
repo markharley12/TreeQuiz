@@ -96,8 +96,13 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
+  // `ignoreVary`: a module script's request carries an Origin header that the
+  // install's requests did not, so a server answering `Vary: Origin` (Vite's
+  // preview does; GitHub Pages does not) made every module a miss — and the
+  // miss, after a deploy, fetched a file the server no longer had. The files
+  // are named by content, so no header can make a cached one wrong.
   if (PRECACHED.has(href)) {
-    event.respondWith(caches.open(CACHE).then((cache) => cache.match(request)).then((hit) => hit ?? fetch(request)))
+    event.respondWith(caches.open(CACHE).then((cache) => cache.match(request, { ignoreVary: true })).then((hit) => hit ?? fetch(request)))
   }
   // Anything else goes to the network untouched: the trees and the catalogue
   // (see above), and other origins, such as the Wikimedia pictures, which carry

@@ -20,6 +20,7 @@ import InfoPopup from './InfoPopup'
 import { displayName } from '../names'
 import { entryFor } from '../engine/datasets'
 import { count, noun, nounsOf } from '../words'
+import { useCloseOnBack } from '../backButton'
 
 type NodeDatum = CustomNodeElementProps['nodeDatum']
 
@@ -217,6 +218,7 @@ export default function ExploreTree() {
   // tree — which re-framed the view a frame after the jump had centred it.
   const jumped = useRef<string | null>(null)
   const [confirmExpand, setConfirmExpand] = useState(false)
+  useCloseOnBack(confirmExpand, () => setConfirmExpand(false))
   const manifest = entryFor(treeOf(dataset))?.manifest
   const showNames = !manifest?.hide_names
   const nouns = nounsOf(manifest)

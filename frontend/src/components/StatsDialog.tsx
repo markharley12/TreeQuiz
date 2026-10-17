@@ -4,6 +4,7 @@ import { utcToday } from '../engine/seed'
 import { shareBase, shareLink } from '../shareLink'
 import { useSharer } from '../sharer'
 import { ACCENT, FONT_DISPLAY, LINE } from '../theme'
+import { useCloseOnBack } from '../backButton'
 
 interface Props {
   open: boolean
@@ -18,6 +19,7 @@ interface Props {
  *  on open, so it is never stale. */
 export default function StatsDialog({ open, onClose, dataset, title }: Props) {
   const { share, copied, canShareSheet } = useSharer()
+  useCloseOnBack(open, onClose)
   if (!open) return null
   const today = utcToday()
   const records = readDailies(dataset)

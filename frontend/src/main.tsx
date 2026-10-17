@@ -18,6 +18,10 @@ import { readLink } from './shareLink'
 import { entryFor } from './engine/datasets'
 import { chooseSize, validSize } from './sizes'
 import { refresh } from './engine/downloads'
+import { Capacitor } from '@capacitor/core'
+import { installBackButton } from './backButton'
+
+installBackButton()
 
 // A shared link names its tree, and a sized tree's size. Switched to before
 // the first render, so the round mounts on the right game and is the one to
@@ -36,8 +40,9 @@ window.addEventListener('load', () => void refresh())
 
 // Offline support for the website, which is what makes "Add to Home Screen"
 // behave like an app; see pwa/sw.js. Never in development, where a cached build
-// would hide every edit.
-if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+// would hide every edit, nor in the Android app, which is served from inside
+// its own package and so is offline already.
+if (import.meta.env.PROD && 'serviceWorker' in navigator && !Capacitor.isNativePlatform()) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(() => {
       // A bonus, not a requirement: the app works the same without it.

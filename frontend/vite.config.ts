@@ -52,7 +52,11 @@ function scanDatasets(build: boolean, dataBase: string | undefined, test: boolea
       const hash = sha(source).slice(0, 12)
       version.update(name).update(hash)
       const url = build ? `data/${id}/${name.replace(/\.json$/, '')}-${hash}.json` : `data/${id}/${name}`
-      files[name] = { url, bytes: source.length, gzip: gzipSync(source).length }
+      // The test run skips a remote tree's gzip, which no test reads: on a
+      // builder's machine animals' 45MB took 3s of it, and the first test that
+      // loaded the catalogue timed out waiting.
+      const zipped = test && manifest.release ? source.length : gzipSync(source).length
+      files[name] = { url, bytes: source.length, gzip: zipped }
       sources.set(url, source)
     }
     const tree = JSON.parse(sources.get(files['tree.json'].url)!.toString('utf8'))

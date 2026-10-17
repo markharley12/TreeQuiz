@@ -146,7 +146,16 @@ const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(D
  */
 function gone(copy: Copy): boolean {
   const entry = BAKED.get(copy.id)
-  return !entry || Boolean(entry.manifest.sizes) !== Boolean(copy.manifest.sizes)
+  return !entry || !sameKind(entry.manifest, copy.manifest)
+}
+
+/** Whether two manifests are one tree's versions rather than two games under
+ *  one name: both sized, or neither. A live catalogue's entry that is not is
+ *  ignored too — the app built for the Wikidata animals, meeting a website
+ *  still serving the 530 as `animals`, would otherwise have downloaded them
+ *  and played them under the sized manifest. */
+function sameKind(a: Manifest, b: Manifest): boolean {
+  return Boolean(a.sizes) === Boolean(b.sizes)
 }
 
 async function readCopies() {
@@ -471,7 +480,8 @@ export function refresh(): Promise<void> {
       const catalogue = await res.json() as Catalogue
       const next = new Map<string, Located>()
       for (const entry of catalogue.trees) {
-        const located = BAKED.has(entry.id) ? locate(entry, url) : null
+        const baked = BAKED.get(entry.id)
+        const located = baked && sameKind(baked.manifest, entry.manifest) ? locate(entry, url) : null
         if (located) next.set(entry.id, located)
       }
       live = next

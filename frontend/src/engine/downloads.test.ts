@@ -238,6 +238,18 @@ describe('a copy the catalogue no longer plays', () => {
   })
 })
 
+describe('a live catalogue from another kind of build', () => {
+  it('is not taken for a newer version of a tree that has changed kind', async () => {
+    const sized = entry('small', 'v2', { 'tree.json': {} }, { manifest: { title: 'small', sizes: { min: 1, default: 1 } }, files: null })
+    liveCatalogue = { trees: [small] }
+    serve({ trees: [small] }, bodies)
+    const d = await load({ trees: [sized] })
+    await d.refresh()
+    expect(d.downloads().trees.get('small')).toMatchObject({ copy: null, offer: null })
+    await expect(d.readJson('small', 'tree.json')).rejects.toThrow(/not available/)
+  })
+})
+
 describe('without Cache Storage', () => {
   it('still plays, holding downloads for the page only', async () => {
     vi.stubGlobal('caches', undefined)

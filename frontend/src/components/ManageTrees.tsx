@@ -10,6 +10,7 @@ import { formatBytes } from '../engine/catalogue'
 import { useDownloads } from '../useDownloads'
 import { shortTitle } from '../words'
 import { FONT_DISPLAY } from '../theme'
+import { useCloseOnBack } from '../backButton'
 
 interface Props {
   open: boolean
@@ -34,6 +35,7 @@ export default function ManageTrees({ open, onClose, onForgot }: Props) {
   useEffect(() => {
     if (open) navigator.storage?.estimate?.().then(setUsage, () => {})
   }, [open, held])
+  useCloseOnBack(open, onClose)
 
   if (!open) return null
 
@@ -123,6 +125,7 @@ function Row({ t, onDelete }: { t: TreeState; onDelete: () => void }) {
 
 function ConfirmDelete({ t, onCancel, onDelete }: { t: TreeState; onCancel: () => void; onDelete: (forget: boolean) => void }) {
   const [forget, setForget] = useState(false)
+  useCloseOnBack(true, onCancel)
   const title = shortTitle(t.manifest)
   return (
     <Dialog open onClose={onCancel} maxWidth="xs">

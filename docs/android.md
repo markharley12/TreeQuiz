@@ -1,9 +1,47 @@
 # The Android app: what TaxoQuiz's taught
 
 *From "The Android app" in TaxoQuiz's CLAUDE.md (Sep 2026), for phase 5 of
-`taxoquiz-merge-plan.md`, which brings Capacitor back. Nothing here is built
-yet: TreeQuiz has no `android/` project. Names below are TaxoQuiz's unless
-marked; the plan's choices for TreeQuiz are at the end.*
+`taxoquiz-merge-plan.md`. Names below are TaxoQuiz's unless marked; what
+TreeQuiz built is in the first section.*
+
+## TreeQuiz's app (17 Oct 2026)
+
+`npm run android:apk` (in `frontend/`) builds the web app in **app mode**
+(`vite build --mode app`, reading `.env.app`: `VITE_DATA_BASE` is the Pages
+site), syncs it into `android/`, and assembles a debug APK at
+`android/app/build/outputs/apk/debug/app-debug.apk`; `android:release` the
+same, release, signed when a key is configured. Built here with JDK 21
+(`JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64`; the default JDK 25 was not
+tried) and `ANDROID_HOME=~/Android/Sdk`; CI's `android` job builds the same
+and keeps the APK as an artifact.
+
+- **ID `io.github.markharley12.treequiz`, name TreeQuiz**, one flavour.
+  Capacitor pinned to TaxoQuiz's versions (core/android/cli 8.5.2, app
+  8.1.1), the newer 8.5.3 being ten days old when added.
+- **What is inside**: the eight small trees, bundled (6.5MB APK). Animals
+  is left out and downloads from the website like anywhere else; the app
+  learns of it from the site's `datasets.json`. So **the app's Animals needs
+  the website to have the same kind of tree**: a live catalogue entry that is
+  sized where the build's is not, or the reverse, is ignored
+  (`sameKind` in `downloads.ts`), and the card says "Needs a connection".
+  Found on the first app build, against a site still serving the 530 as
+  `animals`: without the check the app took them for its Animals.
+- **No service worker in the app** (`main.tsx`): it is served from its own
+  package, so offline already.
+- **The back button** (`backButton.ts`, TaxoQuiz's): closes the newest
+  popup, dialog or menu; with none open, a game goes Home (which keeps its
+  round — TaxoQuiz's way home cleared it, so it minimised instead); on the
+  front page it minimises. Hooked: the info popup, stats, Manage trees and
+  its delete confirmation, settings, explore's expand-all warning, and the
+  round's three confirmations.
+- **Icons and splash** are TaxoQuiz's generated resources, copied: the icon
+  is the same drawing (`pwa/icon.svg`, identical art).
+- **Release signing** reads `TREEQUIZ_RELEASE_*` (store file, store
+  password, key alias, key password) from `~/.gradle/gradle.properties` or
+  the environment; without them a release build is unsigned. No key made
+  yet: a new one or TaxoQuiz's is the owner's call (see Signing below).
+- **Not tested on a phone or emulator** when written: the APK was inspected
+  (package, SDK levels, bundled trees) and the app build run in a browser.
 
 Capacitor 8 wrapped `frontend/dist` in a native shell (`capacitor.config.ts`,
 the Gradle project in `frontend/android/`). The web app is served from inside

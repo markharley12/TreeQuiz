@@ -31,6 +31,7 @@ import { chooseSize, chosenSize, GameContext, gameId, leafCount, parseGame, shor
 import { useDownloads, useTree } from './useDownloads'
 import { download } from './engine/downloads'
 import { formatBytes } from './engine/catalogue'
+import { useCloseOnBack } from './backButton'
 
 // The two trees are drawn with react-d3-tree and d3, a third of the bundle,
 // which the front page and odd one out never need: loaded when first drawn.
@@ -271,6 +272,12 @@ function Round({ dataset, game, size, manifest, nav, onSwitch, onManage }: Round
   const [hintFocus, setHintFocus] = useState(false)
   const [loading, setLoading] = useState(false)
   const [treeLoaded, setTreeLoaded] = useState(false)
+  // Android's back button (backButton.ts): out of a game to the front page,
+  // which keeps its round, and out of whichever confirmation is open.
+  useCloseOnBack(mode !== null, goHome)
+  useCloseOnBack(pendingLink !== null, () => setPendingLink(null))
+  useCloseOnBack(confirmGiveUp, () => setConfirmGiveUp(false))
+  useCloseOnBack(confirmHint, () => setConfirmHint(false))
   const leaf = noun(manifest)
   const plural = nounPlural(manifest)
 

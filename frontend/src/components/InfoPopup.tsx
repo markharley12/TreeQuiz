@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useCloseOnBack } from '../backButton'
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, Chip, Typography, Box, CircularProgress, Link,
@@ -98,6 +99,7 @@ function Items({ items }: { items: string[] }) {
 export default function InfoPopup({ names, onClose }: Props) {
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
+  useCloseOnBack(true, onClose)
   const dataset = useGame()
   const manifest = entryFor(treeOf(dataset))?.manifest
   // The licence the popup text carries, for the notice under it. CC BY-SA and

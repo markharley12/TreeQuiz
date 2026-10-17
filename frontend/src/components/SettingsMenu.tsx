@@ -8,6 +8,7 @@ import { COLOR_SCHEMES, schemeGradient, type ColorScheme } from '../colors'
 import { useSettings, setSetting, ORIENTATIONS, type Orientation, type Settings } from '../settings'
 import { DATASETS } from '../engine/datasets'
 import { shortTitle } from '../words'
+import { useCloseOnBack } from '../backButton'
 
 const ORIENTATION_ICON = {
   horizontal: ArrowForwardIcon,
@@ -22,6 +23,7 @@ interface Props {
 
 export default function SettingsMenu({ onSelectDataset }: Props) {
   const [anchor, setAnchor] = useState<null | HTMLElement>(null)
+  useCloseOnBack(anchor !== null, () => setAnchor(null))
   const { colorScheme, orientation, dataset } = useSettings()
 
   function choose<K extends 'colorScheme' | 'orientation'>(key: K, value: Settings[K]) {
