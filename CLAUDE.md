@@ -7,7 +7,11 @@ explore mode and phone layout came across, and every word about biology became
 a manifest field. TaxoQuiz's CLAUDE.md holds the history behind most display
 decisions here (why the colour scale is absolute, why vertical distance is
 depth, why the game view follows the newest guess…); they carried over
-unchanged, and this file covers what is new.
+unchanged, and this file covers what is new. The rest of what TaxoQuiz
+learned is in `docs/`: `scaling.md` (sizes, timings, the subset property),
+`upstream.md` (fixing Wikidata), `animals-full.md` (its data's history),
+`website.md`, `android.md`, and `taxoquiz-merge-plan.md`, the plan for
+making this repo a superset of TaxoQuiz.
 
 ## Status
 
@@ -15,11 +19,13 @@ Nine datasets — **maths** (MSC2020, 517 fields), **languages** (Glottolog,
 415), **instruments** (Hornbostel–Sachs, 428), **animals** (TaxoQuiz's 530),
 **chess** (Lichess, 446 openings), **physics** (PhySH, 487 topics),
 **chemistry** (ChEBI, 465 chemicals), **cities** (Wikidata and Natural
-Earth, 622), **plants** (Wikidata's taxonomy, 469). Three games: the
-guessing round, odd one out and line-up. Python suite 220 tests, frontend
-524, both green;
-CI and Pages workflows written but **the repo has not been pushed** and has no
-GitHub remote yet. No Android build (TaxoQuiz's Capacitor setup was left out).
+Earth, 622), **plants** (Wikidata's taxonomy, 469) — plus **animals-full**
+(TaxoQuiz Full, 41,153 species), which is a *remote* tree: only its manifest
+is committed (see below). Three games: the guessing round, odd one out and
+line-up. Python suite 329 tests (335 with animals-full built), frontend 524,
+both green. The repo is on
+GitHub, private; Pages runs by hand until it is public. No Android build yet
+(phase 5 of the merge plan; `docs/android.md`).
 
 Run with `env -u PYTHONPATH` on this machine: ROS's `PYTHONPATH` drags its own
 pytest plugins in and collection aborts (`No module named 'osrf_pycommon'`).
@@ -41,6 +47,24 @@ words come from the manifest (`frontend/src/words.ts`).
 Manifests are hand-written and builders never touch them. `checks.closer` is the
 data's test: orderings of relatedness that a correct tree must reproduce,
 keyed by node **name**, since labels drift.
+
+## Remote trees: animals-full
+
+A manifest with **`release`** names a GitHub Release holding the tree's built
+files; the files are gitignored, built on one machine and fetched elsewhere.
+animals-full is the first (`datagen/build_animals_full.py`, from the pipeline
+in `datagen/animals_full/`, seeded from TaxoQuiz's caches so no rescrape is
+needed; `datagen/publish_release.py` uploads, and only on `--yes`). Its leaves
+carry **`fame`** (Wikidata sitelinks), its manifest **`sizes`**, and its popup
+text is split into tiers, `info-<n>.json` at each stop, by when a node enters
+the tree cut to `n`; the contract is in `docs/taxoquiz-merge-plan.md`.
+
+A remote tree is in the app and the Python checks when its files are present,
+and **never in the conformance file**: `tests/conformance.py` and
+`conformance.test.ts` skip any manifest with `release`, since a file that
+depended on which machine wrote it would be stale on every other (and Full
+would be most of it). So a clean clone and CI stay green without the tree,
+and a builder's machine stays green with it.
 
 ## Warmth — what changed from TaxoQuiz's `ranks.py`
 
@@ -207,7 +231,15 @@ focused, skipping the answer.
   famous subgroup names its standard variety (`STANDARD_VARIETY`, checked).
   Without both, Persian, Arabic, Hebrew and Swahili were missing.
 - **Animals** is converted from TaxoQuiz's committed example by
-  `build_animals.py`; it reads `../TaxoQuiz` by default.
+  `build_animals.py`; it reads `../TaxoQuiz` by default (in a worktree, pass
+  `--taxoquiz`). It is coarser than Wikidata's tree: no Neognathae, no
+  Osteichthyes, so a sparrow is as near an ostrich as a pigeon.
+- **Animals-full** (`datagen/animals_full/README.md`, `docs/animals-full.md`):
+  TaxoQuiz's Wikidata pipeline, ported with its tests; `taxo.py` stands in for
+  TaxoQuiz's package and `net.py` for `requests`. The bat chain's kangaroo is
+  a Tasmanian devil in its manifest, because Wikidata prefers Mammalia as
+  Diprotodontia's parent (an upstream lead), and its sponge is *Desmacella
+  annexa*, since Full has no *Spongia*.
 - **Instruments** (`build_instruments.py`, whose docstring has every decision):
   Wikidata's P1762 codes at ≥12 sitelinks; class names from Wikipedia's four
   *List of …phones by Hornbostel–Sachs number* articles, which win over the
