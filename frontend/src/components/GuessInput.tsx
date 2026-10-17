@@ -1,7 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { Autocomplete, TextField, Button, Box, ButtonBase, Paper, type PaperProps } from '@mui/material'
 import { fetchExplore, fetchMatchedAliases, fetchSuggestions, suggestionsNow, type ExploreNode } from '../api'
-import { useSettings } from '../settings'
+import { useGame } from '../sizes'
 import { displayName } from '../names'
 import { withArticle } from '../words'
 import { BULK_CAP, bulkMatches, isBulkQuery, type BulkScope } from '../endgame'
@@ -56,7 +56,7 @@ export default function GuessInput({ onGuess, onBulkGuess, bulk, disabled, exclu
   // out of the Autocomplete's options and value — see the bulk row below.
   const [offer, setOffer] = useState<BulkOption | null>(null)
   const [chosen, setChosen] = useState<BulkOption | null>(null)
-  const { dataset } = useSettings()
+  const dataset = useGame()
   // The leaves under a group, fetched once per group rather than per keystroke.
   // A group can run to a few thousand names; the cap applies after.
   const groups = useRef(new Map<string, Promise<string[]>>())

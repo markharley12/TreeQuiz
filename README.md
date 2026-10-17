@@ -164,6 +164,22 @@ consistent and still wrong.
 guessed (default: the name); `aliases` are other things a player might type.
 Leaf labels must be unique ignoring case.
 
+### Sizes
+
+A leaf may carry `"fame": 64` — how well known it is; for a Wikidata tree,
+its sitelinks. With every leaf famed, a manifest can add
+
+```json
+"sizes": { "min": 500, "default": 2000, "stops": [500, 1000, 2000, 5000, 10000, 20000] }
+```
+
+and the front page gains a slider from the 500 best-known leaves to all of
+them. A size is the tree cut to its `n` most famous leaves, so each step out
+is more obscure; rounds, sets and stats are kept per size, links carry it
+(`&n=5000`), and the daily is always at `default`. Popup text may then be
+split into `info-<n>.json` tiers, so playing at 2,000 fetches only the text
+those nodes need.
+
 ## How warmth works
 
 A node's **warmth** is how specific it is, from 0 to 1. A guess scores the

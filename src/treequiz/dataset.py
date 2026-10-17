@@ -5,6 +5,7 @@ A **dataset is a directory** under `datasets/`:
     datasets/<id>/manifest.json   what the tree is about — written by hand
     datasets/<id>/tree.json       the tree to play on — written by a builder
     datasets/<id>/info.json       popup text per node — optional
+    datasets/<id>/info-<n>.json   or, for a sized tree, the same in tiers (size.py)
 
 Everything the game needs to know about a *domain* is in the manifest, so the
 engine knows nothing about animals, mathematics or languages. That is the whole
@@ -35,6 +36,10 @@ Manifest fields (only `title` is required):
     chain_trim    a JavaScript pattern removed from the start of every step
                   but the first in such a chain: chess's "^\\d+…", so that
                   "2.Nf3" then "2…Nc6" read "2.Nf3 Nc6"
+    sizes         {"min": 500, "default": 2000, "stops": [500, 1000, 2000]} —
+                  the tree can be played cut to its best-known leaves, from
+                  `min` to all of them; the daily is always at `default`. Every
+                  leaf must then carry `fame`. See size.py
 
 Tree nodes:
 
@@ -42,6 +47,8 @@ Tree nodes:
     label     what is displayed, and for a leaf what is guessed; default `name`
     rank      optional; read against the manifest's ladder
     aliases   optional; other things a player might type for this node
+    fame      optional, leaves only; a non-negative integer, higher for the
+              better known (sitelinks, in a Wikidata tree). What a cut keeps
     children  absent or empty for a leaf
 
 `name` and `label` are separate because the thing that must be unique and
@@ -61,6 +68,7 @@ from functools import cached_property
 from pathlib import Path
 
 from .jsonio import read_json
+from .size import Sizes, cut
 
 DATASETS_ENV = "TREEQUIZ_DATASETS"
 DEFAULT_BULK_UNLOCK = 0.5
@@ -140,10 +148,36 @@ class Dataset:
         return float(self.manifest.get("bulk_unlock", DEFAULT_BULK_UNLOCK))
 
     @cached_property
+    def sizes(self) -> Sizes | None:
+        """How the tree may be cut, or None for a tree played whole."""
+        return Sizes.from_manifest(self.manifest.get("sizes"))
+
+    @cached_property
+    def _cuts(self) -> dict[int, "Dataset"]:
+        return {}
+
+    def at_size(self, n: int) -> "Dataset":
+        """This dataset cut to its `n` best-known leaves (see size.py), under
+        the same id, manifest and info. One object per size, so the engine's
+        indexes, which key on the tree, are built once."""
+        if n not in self._cuts:
+            tree = cut(self.tree, n)
+            self._cuts[n] = self if tree is self.tree else Dataset(self.id, self.path, self.manifest, tree)
+        return self._cuts[n]
+
+    @cached_property
     def info(self) -> dict:
-        """Popup text keyed by node name; empty when the dataset has none."""
+        """Popup text keyed by node name; empty when the dataset has none.
+        A sized tree's tiers are read together: every node's text, whatever
+        the size played."""
         p = self.path / "info.json"
-        return read_json(p) if p.is_file() else {}
+        if p.is_file():
+            return read_json(p)
+        out: dict = {}
+        tiers = [q for q in self.path.glob("info-*.json") if q.stem[len("info-"):].isdigit()]
+        for tier in sorted(tiers, key=lambda q: int(q.stem[len("info-"):])):
+            out.update(read_json(tier))
+        return out
 
 
 # Keyed by resolved path rather than id, so a test pointing $TREEQUIZ_DATASETS

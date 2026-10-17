@@ -8,7 +8,12 @@
  * do — `datasetForSeed` in api.ts is what a pasted seed falls back on — but
  * finding a fingerprint means loading every tree, and a link should open
  * without that.
+ *
+ * A sized tree's link carries its size too, `&n=5000`: a seed's fingerprint
+ * covers the leaves, so the seed is refused at any other size.
  */
+import { parseGame } from './gameId'
+
 
 /** What a link to a round starts with: the page itself, so a dev server or a
  *  copy hosted elsewhere links to itself. */
@@ -23,16 +28,21 @@ export function shareBase(page: string): string {
 export type LinkGame = 'round' | 'odd' | 'lineup'
 
 /** A link to a round, or to an odd-one-out or line-up set — which a seed
- *  names just as well, so the parameter is what says which game. */
+ *  names just as well, so the parameter is what says which game. `dataset` is
+ *  a game in sizes.ts's sense: a sized tree's carries its size. */
 export function shareLink(base: string, dataset: string, seed: string, game: LinkGame = 'round'): string {
   const url = new URL(base)
-  url.searchParams.set('d', dataset)
+  const { id, size } = parseGame(dataset)
+  url.searchParams.set('d', id)
+  if (size !== null) url.searchParams.set('n', String(size))
   url.searchParams.set(game === 'round' ? 'seed' : game, seed)
   return url.href
 }
 
 export interface Link {
   dataset: string | null
+  /** A sized tree's size, as written: checked against the tree in sizes.ts. */
+  size: string | null
   seed: string | null
   /** An odd-one-out set's seed. */
   odd: string | null
@@ -45,7 +55,7 @@ export function readLink(search: string): Link {
   const params = new URLSearchParams(search)
   const clean = (v: string | null) => (v?.trim() ? v.trim() : null)
   return {
-    dataset: clean(params.get('d')), seed: clean(params.get('seed')),
+    dataset: clean(params.get('d')), size: clean(params.get('n')), seed: clean(params.get('seed')),
     odd: clean(params.get('odd')), lineup: clean(params.get('lineup')),
   }
 }
@@ -55,6 +65,7 @@ export function readLink(search: string): Link {
 export function withoutLink(href: string): string {
   const url = new URL(href)
   url.searchParams.delete('d')
+  url.searchParams.delete('n')
   url.searchParams.delete('seed')
   url.searchParams.delete('odd')
   url.searchParams.delete('lineup')

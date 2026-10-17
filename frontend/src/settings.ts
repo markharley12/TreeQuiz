@@ -23,6 +23,9 @@ export const ORIENTATIONS = {
 
 export type Orientation = keyof typeof ORIENTATIONS
 
+/** A sized tree's size: one of its stops, or the whole tree. See sizes.ts. */
+export type Size = number | 'all'
+
 export interface Settings {
   colorScheme: ColorScheme
   orientation: Orientation
@@ -31,6 +34,9 @@ export interface Settings {
    *  that has since been removed falls back to the default rather than
    *  failing every request. */
   dataset: string
+  /** The size last chosen for each sized tree, by id. Checked against the
+   *  tree's stops where it is read (sizes.ts), not here. */
+  sizes: Record<string, Size>
 }
 
 // "Down" is the right default on a desktop and the wrong one on a phone, and
@@ -48,6 +54,7 @@ const DEFAULTS: Settings = {
   colorScheme: DEFAULT_COLOR_SCHEME,
   orientation: isNarrowNow() ? 'horizontal' : 'vertical',
   dataset: DEFAULT_DATASET,
+  sizes: {},
 }
 
 function read(): Settings {
@@ -71,6 +78,9 @@ function read(): Settings {
         typeof saved.dataset === 'string' && DATASETS.some((d) => d.id === saved.dataset)
           ? saved.dataset
           : DEFAULTS.dataset,
+      sizes: Object.fromEntries(Object.entries(
+        typeof saved.sizes === 'object' && saved.sizes !== null && !Array.isArray(saved.sizes) ? saved.sizes : {},
+      ).filter(([, v]) => v === 'all' || (typeof v === 'number' && Number.isInteger(v)))),
     }
   } catch {
     return DEFAULTS

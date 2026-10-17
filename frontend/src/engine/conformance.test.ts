@@ -17,7 +17,8 @@ import { getGameState, leavesOf, pick, suggest } from './game'
 import { lineage, search, stats, subtree } from './explore'
 import { makeSet } from './odd'
 import { makeSet as makeLineUps } from './lineup'
-import { labelOf, ladderFrom, makeDataset, type Dataset, type LadderSpec, type Manifest, type RawNode } from './tree'
+import { cut, sizesOf } from './size'
+import { labelOf, ladderFrom, leaves, makeDataset, type Dataset, type LadderSpec, type Manifest, type RawNode } from './tree'
 
 type Outcome = { result?: unknown; error?: string }
 
@@ -52,6 +53,7 @@ interface Golden {
   ladder: { ladder: LadderSpec | null; tree: RawNode; believed: Record<string, number | null>; warmth: Record<string, number> }[]
   odd: ({ tree: RawNode; seed: string } & Outcome)[]
   lineup: ({ tree: RawNode; seed: string } & Outcome)[]
+  size: { tree: RawNode; cuts: ({ n: number; fingerprint?: string; warmth?: Record<string, number> } & Outcome)[] }
   datasets: DatasetCases[]
 }
 
@@ -64,7 +66,11 @@ function dataset(id: string): Dataset {
     if (text === undefined) throw new Error(`dataset ${id} has no ${file}`)
     return JSON.parse(text)
   }
-  return makeDataset(id, read('manifest.json') as Manifest, read('tree.json') as RawNode)
+  // A sized tree's cases are at its smallest size, as conformance.py takes it.
+  const manifest = read('manifest.json') as Manifest
+  const tree = read('tree.json') as RawNode
+  const sizes = sizesOf(manifest)
+  return makeDataset(id, manifest, sizes ? cut(tree, sizes.min) : tree)
 }
 
 const expected = (c: Outcome): Outcome => ('error' in c ? { error: c.error } : { result: c.result })
@@ -123,6 +129,16 @@ describe('line-up', () => {
   it.each(golden.lineup.map((c, i) => [i, c]))('synthetic tree %i deals the same set', (i, c) => {
     const ds = makeDataset(`lineup${i}`, { title: `lineup${i}` }, c.tree)
     expect(outcome(() => makeLineUps(ds, c.seed))).toStrictEqual(expected(c))
+  })
+})
+
+describe('size', () => {
+  it.each(golden.size.cuts.map((c) => [c.n, c]))('cuts the synthetic tree to %i the same', (_, c) => {
+    expect(outcome(() => cut(golden.size.tree, c.n))).toStrictEqual(expected(c))
+    if (c.fingerprint === undefined) return
+    const tree = cut(golden.size.tree, c.n)
+    expect(fingerprint(leaves(tree))).toBe(c.fingerprint)
+    expect(Object.fromEntries(warmthByName(tree, ladderFrom(null)))).toStrictEqual(c.warmth)
   })
 })
 

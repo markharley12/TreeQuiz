@@ -4,7 +4,7 @@ import {
   Button, Chip, Typography, Box, CircularProgress, Link,
 } from '@mui/material'
 import { type Info } from '../api'
-import { useSettings } from '../settings'
+import { treeOf, useGame } from '../sizes'
 import { loadInfo } from '../infoCache'
 import { entryFor } from '../engine/datasets'
 import { displayName } from '../names'
@@ -98,8 +98,8 @@ function Items({ items }: { items: string[] }) {
 export default function InfoPopup({ names, onClose }: Props) {
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
-  const { dataset } = useSettings()
-  const manifest = entryFor(dataset)?.manifest
+  const dataset = useGame()
+  const manifest = entryFor(treeOf(dataset))?.manifest
   // The licence the popup text carries, for the notice under it. CC BY-SA and
   // BY-NC-SA both ask for it.
   const licensed = manifest ? infoSource(manifest) : undefined

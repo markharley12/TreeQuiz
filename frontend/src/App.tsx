@@ -12,6 +12,7 @@ import DatasetPicker from './components/DatasetPicker'
 import OddOneOut from './components/OddOneOut'
 import LineUp from './components/LineUp'
 import StatsDialog from './components/StatsDialog'
+import SizeSlider from './components/SizeSlider'
 import { datasetForSeed, fetchGameState, startRound, type TreeNode } from './api'
 import { useSettings, setSetting } from './settings'
 import { FONT_DISPLAY, PAGE_PAD, TREE_BLEED } from './theme'
@@ -24,6 +25,7 @@ import { readLink, shareBase, shareLink, withoutLink } from './shareLink'
 import { useSharer } from './sharer'
 import { guessWarmths, readDailies, recordDaily, shareText } from './results'
 import { bulkUnlock, noun, nounPlural, shortTitle } from './words'
+import { chooseSize, chosenSize, dailyGame, GameContext, gameId, parseGame, shortSize, sizesFor, sizeText, type Size } from './sizes'
 
 // The two trees are drawn with react-d3-tree and d3, a third of the bundle,
 // which the front page and odd one out never need: loaded when first drawn.
@@ -55,11 +57,12 @@ interface SavedSession {
 
 const today = () => new Date().toISOString().slice(0, 10)
 
-/** Each tree keeps its own round, so switching tree and back loses nothing. */
-const sessionKey = (dataset: string) => storageKey('session', dataset)
+/** Each tree keeps its own round, so switching tree and back loses nothing —
+ *  and a sized tree one per size (sizes.ts), since the size is the game. */
+const sessionKey = (game: string) => storageKey('session', game)
 /** Whether a tree was last left in explore, which a reload should return to.
  *  Kept apart from the round, so exploring never overwrites one. */
-const viewKey = (dataset: string) => storageKey('view', dataset)
+const viewKey = (game: string) => storageKey('view', game)
 
 function readSession(dataset: string): SavedSession | null {
   try {
@@ -146,10 +149,15 @@ interface Nav {
   odd?: string | null
   /** A line-up set's seed, from a link. */
   lineup?: string | null
+  /** Open today's round on arrival: asked for at another size, and the daily
+   *  is only ever played at the default. */
+  daily?: boolean
 }
 
 export default function App() {
-  const { dataset } = useSettings()
+  const { dataset, sizes } = useSettings()
+  const size = chosenSize(dataset, sizes)
+  const game = gameId(dataset, size)
   // The link's seed goes to the first round only; later switches carry their own.
   const [nav, setNav] = useState<Nav>(() => {
     const link = readLink(window.location.search)
@@ -161,26 +169,38 @@ export default function App() {
     if (manifest) document.title = `${shortTitle(manifest)} — TreeQuiz`
   }, [manifest])
 
-  function switchTo(id: string, next: Nav) {
+  function switchTo(id: string, next: Nav, toSize?: Size) {
     setNav(next)
+    if (toSize !== undefined) chooseSize(id, toSize)
     setSetting('dataset', id)
   }
 
   if (!manifest) return <Alert severity="error" sx={{ m: 3 }}>No datasets in this build.</Alert>
-  // Keyed on the dataset, so a switch mounts a fresh round that reads its own
-  // saved state, rather than one round's state leaking into another tree.
-  return <Round key={dataset} dataset={dataset} manifest={manifest} nav={nav} onSwitch={switchTo} />
+  // Keyed on the game — the tree, and a sized tree's size — so a switch mounts
+  // a fresh round that reads its own saved state, rather than one round's
+  // state leaking into another tree or size. Everything below the round that
+  // asks the engine anything asks about this game.
+  return (
+    <GameContext.Provider value={game}>
+      <Round key={game} dataset={dataset} game={game} size={size} manifest={manifest} nav={nav} onSwitch={switchTo} />
+    </GameContext.Provider>
+  )
 }
 
 interface RoundProps {
+  /** The tree. */
   dataset: string
+  /** The tree at its size, which is what every round, set and record is
+   *  kept under; the tree's id alone for an unsized tree. */
+  game: string
+  size: Size | null
   manifest: Manifest
   nav: Nav
-  onSwitch: (id: string, next: Nav) => void
+  onSwitch: (id: string, next: Nav, size?: Size) => void
 }
 
-function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
-  const [boot] = useState(() => readBoot(dataset, nav.seed, nav.landing, nav.odd ?? null, nav.lineup ?? null))
+function Round({ dataset, game, size, manifest, nav, onSwitch }: RoundProps) {
+  const [boot] = useState(() => readBoot(game, nav.seed, nav.landing, nav.odd ?? null, nav.lineup ?? null))
   const saved = boot.saved
   const [mode, setMode] = useState<Mode | null>(boot.mode)
   // The mode of the round in memory, which the front page can resume.
@@ -198,7 +218,7 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
   const [statsOpen, setStatsOpen] = useState(false)
   const [seedError, setSeedError] = useState<string | null>(null)
   // When a rejected seed belongs to another tree: which, to offer playing it there.
-  const [seedElsewhere, setSeedElsewhere] = useState<{ id: string; seed: string } | null>(null)
+  const [seedElsewhere, setSeedElsewhere] = useState<{ id: string; size: Size | null; seed: string } | null>(null)
   const [pendingLink, setPendingLink] = useState<string | null>(boot.ask ? boot.linked : null)
   // A link's odd-one-out set, dealt the first time odd one out opens and then
   // forgotten: coming back to it later resumes whatever set is in progress.
@@ -229,6 +249,7 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
       window.history.replaceState(window.history.state, '', withoutLink(window.location.href))
     }
     if (boot.linked !== null && !boot.ask) void startGame('practice', boot.linked)
+    else if (nav.daily && dailyHere) openDaily()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Draw a resumed round's tree. A round with only hints has one too.
@@ -237,7 +258,7 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
   useEffect(() => {
     if (!needsTree) return
     let cancelled = false
-    fetchGameState(dataset, secret!, guesses, hints)
+    fetchGameState(game, secret!, guesses, hints)
       .then((state) => { if (!cancelled) setTreeData(state) })
       .catch(() => {})
       .finally(() => { if (!cancelled) setTreeLoaded(true) })
@@ -250,12 +271,12 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
       const session: SavedSession = {
         mode: roundMode, secret, seed, guesses, won, revealed, hints, hintPoints, date: today(),
       }
-      writeStorage(sessionKey(dataset), JSON.stringify(session))
+      writeStorage(sessionKey(game), JSON.stringify(session))
     }
-  }, [dataset, roundMode, secret, seed, guesses, won, revealed, hints, hintPoints])
+  }, [game, roundMode, secret, seed, guesses, won, revealed, hints, hintPoints])
   useEffect(() => {
-    writeStorage(viewKey(dataset), isView(mode) ? mode : null)
-  }, [dataset, mode])
+    writeStorage(viewKey(game), isView(mode) ? mode : null)
+  }, [game, mode])
 
   // Keep a finished daily for the stats — once its tree is in, since the
   // squares are read off it. Only the day's first finish is kept, so the same
@@ -263,7 +284,7 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
   const dailyOver = roundMode === 'daily' && (won || revealed) && secret !== null
   useEffect(() => {
     if (!dailyOver || (guesses.length > 0 && treeData === null)) return
-    recordDaily(dataset, roundDay, {
+    recordDaily(game, roundDay, {
       seed, guesses, warmths: guessWarmths(treeData, guesses), hints, hintPoints, won,
     })
   }, [dailyOver, treeData]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -273,7 +294,7 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
     setSeedElsewhere(null)
     setLoading(true)
     try {
-      const round = await startRound(dataset, { daily: selected === 'daily', seed: sharedSeed })
+      const round = await startRound(game, { daily: selected === 'daily', seed: sharedSeed })
       setMode(selected)
       setRoundMode(selected)
       setGuesses([])
@@ -290,10 +311,14 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
       // A rejected seed must leave the current round alone rather than
       // half-start one — and if it belongs to another tree, say which.
       const there = sharedSeed === undefined ? null : await datasetForSeed(sharedSeed)
-      const other = there && there !== dataset ? entryFor(there) : undefined
-      if (other) {
-        setSeedError(`That seed is for ${shortTitle(other.manifest)}, a different tree.`)
-        setSeedElsewhere({ id: other.id, seed: sharedSeed!.trim() })
+      const where = there && there !== game ? parseGame(there) : null
+      const other = where ? entryFor(where.id) : undefined
+      if (where && other) {
+        const at = where.size === null ? '' : where.size === 'all' ? ', played whole' : ` at ${sizeText(where.size)}`
+        setSeedError(where.id === dataset
+          ? `That seed is for ${shortTitle(other.manifest)}${at}, a different size.`
+          : `That seed is for ${shortTitle(other.manifest)}${at}, a different tree.`)
+        setSeedElsewhere({ id: other.id, size: where.size, seed: sharedSeed!.trim() })
       } else {
         setSeedError(e instanceof Error ? e.message : 'Could not start that round')
       }
@@ -308,7 +333,7 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
     // This fetch is the tree from now on; the resume fetch must not race it.
     setTreeLoaded(true)
     setHintFocus(false)
-    setTreeData(await fetchGameState(dataset, secret!, next, hints))
+    setTreeData(await fetchGameState(game, secret!, next, hints))
     if (secret !== null && labels.includes(secret)) setWon(true)
   }
 
@@ -322,10 +347,10 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
     setHintPoints(hintPoints + hintCost(guesses.length + hintPoints))
     setHints(next)
     setTreeLoaded(true)
-    setTreeData(await fetchGameState(dataset, secret!, guesses, next))
+    setTreeData(await fetchGameState(game, secret!, guesses, next))
   }
 
-  const roundLink = () => shareLink(shareBase(window.location.href), dataset, seed)
+  const roundLink = () => shareLink(shareBase(window.location.href), game, seed)
 
   // The round as a link, to play; and once it is over, how it went, to show.
   function shareRound() {
@@ -377,9 +402,26 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
 
   const resumable = roundMode !== null && secret !== null && !won && !revealed && (guesses.length > 0 || hints > 0)
   // Today's daily: the round in memory if that is it, and otherwise its record,
-  // which the stats show — a finished daily is not dealt a second time.
-  const dailyInMemory = roundMode === 'daily' && secret !== null
-  const doneToday = (dailyInMemory && (won || revealed)) || Boolean(readDailies(dataset)[today()])
+  // which the stats show — a finished daily is not dealt a second time. On a
+  // sized tree it lives at the default size; at any other, the button reads
+  // that size's round and record, and goes there to play.
+  const sizes = sizesFor(dataset)
+  const daily = dailyGame(dataset)
+  const dailyHere = daily === game
+  const dailyElsewhere = dailyHere ? null : readSession(daily)
+  const dailyInMemory = dailyHere && roundMode === 'daily' && secret !== null
+  const doneToday = (dailyInMemory && (won || revealed)) || Boolean(readDailies(daily)[today()])
+  const dailyResumable = dailyHere ? dailyInMemory && resumable : dailyElsewhere?.mode === 'daily' && inProgress(dailyElsewhere)
+
+  function openDaily() {
+    if (!dailyHere) onSwitch(dataset, { landing: true, seed: null, daily: true }, sizes!.default)
+    else if (dailyInMemory) resume()
+    else if (doneToday) setStatsOpen(true)
+    else void startGame('daily')
+  }
+
+  // A chip's word for the size played, on a sized tree.
+  const sized = (chip: string) => (size === null ? chip : `${chip} · ${shortSize(size)}`)
 
   if (loading) return (
     <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}><CircularProgress /></Box>
@@ -402,6 +444,12 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
         <Typography sx={{ textAlign: 'center', mt: 3, mb: 1.5, fontFamily: FONT_DISPLAY, fontSize: '1.15rem' }}>
           {manifest.prompt}
         </Typography>
+        {sizes && size !== null && (
+          <SizeSlider
+            sizes={sizes} size={size} plural={plural}
+            onChange={(next) => next !== size && onSwitch(dataset, { landing: true, seed: null }, next)}
+          />
+        )}
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: 'center' }}>
           {resumable && roundMode === 'practice' && (
             <Button variant="contained" size="large" onClick={resume}>Resume your round</Button>
@@ -409,9 +457,9 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
           <Button
             variant={(resumable && roundMode === 'practice') || doneToday ? 'outlined' : 'contained'}
             size="large"
-            onClick={dailyInMemory ? resume : doneToday ? () => setStatsOpen(true) : () => startGame('daily')}
+            onClick={openDaily}
           >
-            {dailyInMemory && resumable ? `Resume today’s ${leaf}` : `Today’s ${leaf}${doneToday ? ' ✓' : ''}`}
+            {dailyResumable ? `Resume today’s ${leaf}` : `Today’s ${leaf}${doneToday ? ' ✓' : ''}`}
           </Button>
           <Button variant="outlined" size="large" onClick={() => startGame('practice')}>
             Practice
@@ -432,7 +480,7 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
           kinship to a fifth. Explore has no secret and nothing to guess.
           {' '}<Link component="button" variant="body2" onClick={() => setStatsOpen(true)} sx={{ verticalAlign: 'baseline' }}>Your stats</Link>
         </Typography>
-        <StatsDialog open={statsOpen} onClose={() => setStatsOpen(false)} dataset={dataset} title={shortTitle(manifest)} />
+        <StatsDialog open={statsOpen} onClose={() => setStatsOpen(false)} dataset={daily} title={shortTitle(manifest)} />
 
         {/* Set apart: a different job from starting a round. */}
         <Box sx={{ mt: 4, pt: 3, borderTop: 1, borderColor: 'divider' }}>
@@ -459,7 +507,7 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
               {seedError}
               {seedElsewhere && <>
                 {' '}
-                <Link component="button" onClick={() => onSwitch(seedElsewhere.id, { landing: false, seed: seedElsewhere.seed })}>
+                <Link component="button" onClick={() => onSwitch(seedElsewhere.id, { landing: false, seed: seedElsewhere.seed }, seedElsewhere.size ?? undefined)}>
                   Play it there
                 </Link>
               </>}
@@ -474,21 +522,21 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
 
   if (mode === 'odd') return (
     <Box sx={{ p: PAGE_PAD, height: '100dvh', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', '& > *': { flexShrink: 0 } }}>
-      {header('Odd one out')}
-      <OddOneOut dataset={dataset} title={shortTitle(manifest)} plural={plural} linkSeed={oddLink} />
+      {header(sized('Odd one out'))}
+      <OddOneOut dataset={game} title={shortTitle(manifest)} plural={plural} linkSeed={oddLink} daily={dailyHere} />
     </Box>
   )
 
   if (mode === 'lineup') return (
     <Box sx={{ p: PAGE_PAD, height: '100dvh', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', '& > *': { flexShrink: 0 } }}>
-      {header('Line-up')}
-      <LineUp dataset={dataset} title={shortTitle(manifest)} plural={plural} linkSeed={lineupLink} />
+      {header(sized('Line-up'))}
+      <LineUp dataset={game} title={shortTitle(manifest)} plural={plural} linkSeed={lineupLink} daily={dailyHere} />
     </Box>
   )
 
   if (mode === 'explore') return (
     <Box sx={{ p: PAGE_PAD, height: '100dvh', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', '& > *': { flexShrink: 0 } }}>
-      {header('Explore')}
+      {header(sized('Explore'))}
       <Suspense fallback={treeFallback}><ExploreTree /></Suspense>
     </Box>
   )
@@ -516,7 +564,7 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
     // controls leave. Nothing else shrinks: on a screen too short for
     // everything the page scrolls instead of squashing the guess list.
     <Box sx={{ p: PAGE_PAD, height: '100dvh', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', '& > *': { flexShrink: 0 } }}>
-      {header(mode === 'daily' ? 'Daily' : 'Practice', mode === 'practice' && (
+      {header(sized(mode === 'daily' ? 'Daily' : 'Practice'), mode === 'practice' && (
         // "New" alone on a phone: "New instrument" beside "Instruments" took the
         // header to two rows at 390px, where TaxoQuiz's "New animal" fitted.
         <Button size="small" sx={{ whiteSpace: 'nowrap' }} aria-label={`New ${leaf}`} onClick={() => startGame('practice')}>
@@ -598,7 +646,7 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
         </Suspense>
       </Box>
 
-      <StatsDialog open={statsOpen} onClose={() => setStatsOpen(false)} dataset={dataset} title={shortTitle(manifest)} />
+      <StatsDialog open={statsOpen} onClose={() => setStatsOpen(false)} dataset={daily} title={shortTitle(manifest)} />
       {/* A shared link arriving mid-round: asked, because opening a link is not
         * a decision to throw away a daily in progress. */}
       <Dialog open={pendingLink !== null} onClose={() => setPendingLink(null)}>

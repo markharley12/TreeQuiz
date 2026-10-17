@@ -30,7 +30,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from conftest import n  # noqa: E402
 
-from treequiz import dataset, explore, game, lineup, odd, seed  # noqa: E402
+from treequiz import dataset, explore, game, lineup, odd, seed, size  # noqa: E402
 from treequiz.dataset import Ladder  # noqa: E402
 from treequiz.ladder import believed_levels, warmth_by_name  # noqa: E402
 from treequiz.tree import all_nodes, label_of, leaves  # noqa: E402
@@ -148,6 +148,36 @@ def lineup_cases() -> list:
     return out
 
 
+def fame(name: str, value: int | None, *children) -> dict:
+    out = n(name, None, *children)
+    if value is not None:
+        out["fame"] = value
+    return out
+
+
+# For the cut: ties on fame broken by name, where Python's code-point order
+# and JavaScript's UTF-16 order disagree (U+FF21 against a lion, U+1F981); a
+# leaf with no fame; pass-throughs; a group whose leaves all go early.
+SIZE_TREE = n("root", None,
+              n("big", None, fame("\uff21", 70), fame("\U0001f981", 70),
+                n("mid", None, fame("c", 50), fame("d", 40), fame("e", 5))),
+              n("solo", None, n("lone", None, fame("b", 50))),
+              n("dim", None, fame("x", 3), fame("y", None)),
+              fame("z", 1))
+
+
+def size_cases() -> list:
+    out = []
+    for k in (0, 1, 2, 3, 5, 6, 8, 99):
+        case = {"n": k, **attempt(size.cut, SIZE_TREE, k)}
+        if "result" in case:
+            cut = case["result"]
+            case["fingerprint"] = seed.fingerprint(leaves(cut))
+            case["warmth"] = warmth_by_name(cut, Ladder())
+        out.append(case)
+    return out
+
+
 def dataset_cases(ds: dataset.Dataset, rng: random.Random) -> dict:
     lv = leaves(ds.tree)
     labels = [label_of(x) for x in lv]
@@ -244,6 +274,14 @@ def shipped() -> list[str]:
     return [i for i in dataset.available() if not dataset.load(i).manifest.get("release")]
 
 
+def cased(ds_id: str) -> dataset.Dataset:
+    """A shipped dataset as its cases see it: a sized tree cut to its smallest
+    size, since warmth over all of a 57,000-node tree would be megabytes, and
+    the cut itself is checked on the synthetic tree above."""
+    ds = dataset.load(ds_id)
+    return ds.at_size(ds.sizes.min) if ds.sizes else ds
+
+
 def build() -> dict:
     rng = random.Random(20261008)
     return {
@@ -259,7 +297,8 @@ def build() -> dict:
         "ladder": ladder_cases(),
         "odd": odd_cases(),
         "lineup": lineup_cases(),
-        "datasets": [dataset_cases(dataset.load(i), rng) for i in shipped()],
+        "size": {"tree": SIZE_TREE, "cuts": size_cases()},
+        "datasets": [dataset_cases(cased(i), rng) for i in shipped()],
     }
 
 

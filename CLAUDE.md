@@ -22,10 +22,10 @@ Nine datasets — **maths** (MSC2020, 517 fields), **languages** (Glottolog,
 Earth, 622), **plants** (Wikidata's taxonomy, 469) — plus **animals-full**
 (TaxoQuiz Full, 41,153 species), which is a *remote* tree: only its manifest
 is committed (see below). Three games: the guessing round, odd one out and
-line-up. Python suite 329 tests (335 with animals-full built), frontend 524,
-both green. The repo is on
-GitHub, private; Pages runs by hand until it is public. No Android build yet
-(phase 5 of the merge plan; `docs/android.md`).
+line-up. Any tree whose leaves carry `fame` can be played at a chosen size
+(the slider, below). Python suite TESTS_PY, frontend TESTS_JS, both green.
+The repo is on GitHub and public. No Android build yet (phase 5 of the merge
+plan; `docs/android.md`).
 
 Run with `env -u PYTHONPATH` on this machine: ROS's `PYTHONPATH` drags its own
 pytest plugins in and collection aborts (`No module named 'osrf_pycommon'`).
@@ -38,7 +38,8 @@ cd frontend && npm test && npm run lint && npx tsc --noEmit
 
 ## What a dataset is
 
-`datasets/<id>/{manifest,tree,info}.json`; see `src/treequiz/dataset.py` for
+`datasets/<id>/{manifest,tree,info}.json` (a sized tree may split `info` into
+`info-<n>.json` tiers); see `src/treequiz/dataset.py` for
 every field. The frontend finds them with `import.meta.glob` in
 `frontend/src/engine/datasets.ts`, so a new directory is a new tree in the app
 with no code change. Nothing in `src/` or `frontend/src/` may name a dataset —
@@ -149,6 +150,58 @@ keeps only its puzzle and its reveal. A dot is amber for a partial score.
 **A key a game handles is used up** (`preventDefault`): Enter checked a
 line-up and its keypress then landed on the Next button checking had just
 focused, skipping the answer.
+
+## Sizes — one tree played at many
+
+`src/treequiz/size.py` (reference), `frontend/src/engine/size.ts` (port),
+`frontend/src/sizes.ts` (the app's side). TaxoQuiz sized its datasets by a
+sitelink threshold, and every smaller one was exactly a subset of every
+bigger, so one tree serves every size: the builder writes `fame` on each
+leaf, the manifest opts in with `"sizes": {"min", "default", "stops"}`, and
+**`cut(tree, n)`** keeps the `n` leaves of highest fame (ties by `name`, by
+code point: JavaScript's `<` orders UTF-16 units and put a lion emoji before
+U+FF21, so the port compares code points; the synthetic case catches it) and
+drops internal nodes left empty. **Pass-throughs stay**, as TaxoQuiz's
+threshold builds left them (`extract_game_tree.py` merges only a child named
+as its parent), and that keeps a node, once in, in at every bigger size —
+which the info tiers rely on. Everything — warmth, seeds, hints, both set
+games, explore — runs on the cut tree. On animals-full the cut reproduces the
+plan's measured table exactly (500 leaves → 1,692 nodes … 20,000 → 29,605),
+in ~150ms a cut in Python.
+
+- **The size is part of the game.** A game is named `<tree>@<size>`
+  (`animals-full@2000`, `@all`; `gameId.ts`) and that name goes wherever a
+  tree's id went: storage keys, the info cache, the API, a `GameContext` for
+  the trees and popups. So sessions, explore, set games, tallies and dailies
+  are all per tree and size, and an **unsized tree's game is its bare id**,
+  keys unchanged. The size chosen is a setting per tree (`settings.sizes`),
+  checked against the stops on read, so a link or storage cannot make one up.
+- **The daily is always at `sizes.default`**, so everyone plays the same one.
+  At another size "Today's animal" reads the default size's round and record
+  and switches the slider there to play (`nav.daily`); odd one out and
+  line-up deal no today's set away from the default (`useSetGame`'s `daily`).
+- **Seeds need nothing new**: the fingerprint covers the cut's leaves, so a
+  seed dealt at 2,000 is refused at 5,000 (tested in Python). Links carry
+  `&n=`; a rejected seed is looked up across every tree *and stop*
+  (`datasetForSeed`), and the error says "a different size" with "Play it
+  there".
+- **The slider** (`SizeSlider.tsx`) is MUI's, on the logarithm of the size,
+  `step={null}` so it snaps to the stops, and "All" a doubling past the last
+  stop: the leaf count is unknown until the tree loads, and the front page
+  should not load 6MB to draw a mark. Letting go is a switch, like picking a
+  tree: the round remounts on the new game.
+- **Popup text in tiers**: `info-<n>.json` holds the nodes a cut to `n` adds
+  to the stop before, the last tier named for the leaf count (`size.tiers`
+  says which, for the builder). `loadInfo(id, upTo)` in `datasets.ts` fetches
+  only the tiers up to the size played — the seam phase 4's downloads swap.
+- **Validation at every stop**: fame on every leaf (a non-negative integer,
+  leaves only), stops rising from `min`, the last below the leaf count, and
+  warmth and the orderings on each cut. Not the share of rank claims
+  rejected: the cut keeps the high nodes where rejections sit and drops the
+  genera, so animals-full's 1.4% read as 12% at 500.
+- **Conformance**: the cut on a synthetic fame tree at eight sizes (with its
+  fingerprint and warmth), and a sized shipped tree's cases at `sizes.min`,
+  since whole-tree warmth on 57,000 nodes would be megabytes. 1,207KB.
 
 ## Frontend decisions new here
 

@@ -63,12 +63,21 @@ describe('reading stored settings', () => {
   it('restores a full saved set', async () => {
     const { getSettings } = await loadSettings({
       stored: JSON.stringify({
-        colorScheme: 'rainbow', orientation: 'horizontal', dataset: 'animals',
+        colorScheme: 'rainbow', orientation: 'horizontal', dataset: 'animals', sizes: { trees: 2000 },
       }),
     })
     expect(getSettings()).toEqual({
-      colorScheme: 'rainbow', orientation: 'horizontal', dataset: 'animals',
+      colorScheme: 'rainbow', orientation: 'horizontal', dataset: 'animals', sizes: { trees: 2000 },
     })
+  })
+
+  it('keeps only sizes that could be sizes', async () => {
+    const { getSettings } = await loadSettings({
+      stored: JSON.stringify({ sizes: { a: 500, b: 'all', c: 'lots', d: 1.5, e: null } }),
+    })
+    expect(getSettings().sizes).toEqual({ a: 500, b: 'all' })
+    const { getSettings: again } = await loadSettings({ stored: JSON.stringify({ sizes: [500] }) })
+    expect(again().sizes).toEqual({})
   })
 
   it('rejects a colour scheme we no longer ship', async () => {

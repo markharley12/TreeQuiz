@@ -20,6 +20,10 @@ Three groups, weakest first; each catches what the one before cannot:
    to a lion, and so on down. Names absent from the tree are skipped, not failed.
    This is the group that catches a tree which is internally consistent and
    still wrong — TaxoQuiz's flat Animalia → Phylum example was exactly that.
+
+A sized tree (see size.py) is also checked at every stop: its `sizes` make
+sense, every leaf has a `fame`, and warmth rises and the orderings hold on
+each cut, since a cut moves warmth wherever it is placed by shape.
 """
 from __future__ import annotations
 
@@ -28,6 +32,7 @@ from dataclasses import dataclass, field
 
 from .dataset import Dataset
 from .ladder import rejected_share, warmth_by_name
+from .size import Sizes
 from .tree import all_nodes, children_of, label_of, leaves
 
 MAX_REJECTED_SHARE = 0.05
@@ -78,6 +83,11 @@ def check_shape(ds: Dataset, r: Report) -> None:
             r.fail(f"{name!r} has an empty children list; a leaf must omit it")
         if "label" in node and (not isinstance(node["label"], str) or not node["label"].strip()):
             r.fail(f"{name!r} has a blank label")
+        fame = node.get("fame")
+        if fame is not None and (not isinstance(fame, int) or isinstance(fame, bool) or fame < 0):
+            r.fail(f"{name!r} has a fame that is not a non-negative integer: {fame!r}")
+        elif fame is not None and children_of(node):
+            r.fail(f"{name!r} has a fame but is not a leaf; only leaves are ranked")
         aliases = node.get("aliases")
         if aliases is not None and (not isinstance(aliases, list) or not all(isinstance(a, str) for a in aliases)):
             r.fail(f"{name!r} has aliases that are not a list of strings")
@@ -117,15 +127,7 @@ def _lineages(tree: dict) -> dict[str, list[str]]:
 
 
 def check_warmth(ds: Dataset, r: Report) -> None:
-    warmth = warmth_by_name(ds.tree, ds.ladder)
-    bad = [
-        (parent["name"], node["name"], warmth[parent["name"]], warmth[node["name"]])
-        for node, parent in _edges(ds.tree)
-        if parent is not None and not warmth[node["name"]] > warmth[parent["name"]]
-    ]
-    if bad:
-        p, c, wp, wc = bad[0]
-        r.fail(f"{len(bad)} edges not strictly warmer going down, e.g. {p} {wp:.3f} -> {c} {wc:.3f}")
+    check_edges(ds, r)
     rejected, ranked = rejected_share(ds.tree, ds.ladder)
     if ranked:
         share = rejected / ranked
@@ -135,6 +137,18 @@ def check_warmth(ds: Dataset, r: Report) -> None:
         r.fail("the manifest has a ladder but no internal node has a rank on it")
     else:
         r.note("no ladder: every internal node is placed by the tree's shape")
+
+
+def check_edges(ds: Dataset, r: Report) -> None:
+    warmth = warmth_by_name(ds.tree, ds.ladder)
+    bad = [
+        (parent["name"], node["name"], warmth[parent["name"]], warmth[node["name"]])
+        for node, parent in _edges(ds.tree)
+        if parent is not None and not warmth[node["name"]] > warmth[parent["name"]]
+    ]
+    if bad:
+        p, c, wp, wc = bad[0]
+        r.fail(f"{len(bad)} edges not strictly warmer going down, e.g. {p} {wp:.3f} -> {c} {wc:.3f}")
 
 
 def check_orderings(ds: Dataset, r: Report) -> None:
@@ -168,7 +182,35 @@ def check_orderings(ds: Dataset, r: Report) -> None:
         r.note("orderings: the manifest lists none")
 
 
-CHECKS = (check_shape, check_warmth, check_orderings)
+def check_sizes(ds: Dataset, r: Report) -> None:
+    if not ds.manifest.get("sizes"):
+        return
+    try:
+        sizes = Sizes.from_manifest(ds.manifest["sizes"])
+    except ValueError as e:
+        r.fail(str(e))
+        return
+    assert sizes is not None
+    lv = leaves(ds.tree)
+    missing = [x["name"] for x in lv if "fame" not in x]
+    if missing:
+        r.fail(f"{len(missing)} leaves have no fame, which a sized tree needs, e.g. {missing[:3]}")
+    if sizes.stops[-1] >= len(lv):
+        r.fail(f"the last stop, {sizes.stops[-1]}, is not below the {len(lv)} leaves; the whole tree is the slider's end")
+        return
+    for stop in sizes.stops:
+        cut = ds.at_size(stop)
+        sub = Report(f"at {stop}")
+        # Not the share of rank claims rejected: that is the data's, and a cut
+        # keeps the high nodes where the rejections sit while it drops the
+        # genera, so at 500 the whole tree's 1.4% read as 12%.
+        check_edges(cut, sub)
+        check_orderings(cut, sub)
+        r.failures += [f"at {stop}: {f}" for f in sub.failures]
+    r.note(f"sizes: {', '.join(map(str, sizes.stops))} and {len(lv)}, daily at {sizes.default}")
+
+
+CHECKS = (check_shape, check_warmth, check_orderings, check_sizes)
 
 
 def validate(ds: Dataset, checks=CHECKS) -> Report:
