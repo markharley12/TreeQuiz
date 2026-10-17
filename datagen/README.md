@@ -12,6 +12,7 @@ the source again.
 | `build_languages.py` | `datasets/languages` | Glottolog's languoid table, Wikidata's sitelinks, Wikipedia's summaries |
 | `build_instruments.py` | `datasets/instruments` | Wikidata's Hornbostel–Sachs numbers (P1762), class names from Wikipedia's Hornbostel–Sachs articles |
 | `build_animals.py` | `datasets/animals` | TaxoQuiz's committed example (`--taxoquiz ../TaxoQuiz`) |
+| `build_animals_full.py` | `datasets/animals-full` (not committed) | the staging tree `animals_full/` builds from Wikidata, seeded from a TaxoQuiz checkout's caches; sitelinks as each leaf's `fame`, popup text in tiers |
 | `build_physics.py` | `datasets/physics` | PhySH (CC0), pinned to a commit; fame from Wikipedia titles and Wikidata sitelinks |
 | `build_chemistry.py` | `datasets/chemistry` | ChEBI's ontology (CC BY 4.0), release pinned; chemicals from Wikidata's ChEBI IDs and sitelinks |
 | `build_chess.py` | `datasets/chess` | Lichess's opening list (CC0), pinned to a commit; Wikipedia's leads where an opening has an article |
@@ -22,6 +23,12 @@ the source again.
 as an SVG board. It is checked against python-chess once rather than depending
 on it: every one of Lichess's 3,865 lines replays to the same position and
 the same last move.
+
+`animals_full/` is TaxoQuiz's whole Wikidata pipeline (scraper, extractor,
+popup-text scraper, validator, audit and upstream ledger) with its tests,
+animal-specific enough to keep apart; its README says how to run it.
+`publish_release.py` uploads a remote tree's built files (any manifest with
+`release`) to its GitHub Release, and does nothing without `--yes`.
 
 `common.py` is what they share: `write_dataset` validates a tree against its
 manifest and refuses one that fails; `fetch` downloads once;

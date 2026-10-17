@@ -10,3 +10,8 @@ __pycache__/
 *.pyc
 node_modules/
 .claude/
+
+# Built by datagen/build_animals_full.py and published as a GitHub Release (the
+# manifest's `release`); only the hand-written manifest is committed.
+/datasets/animals-full/*
+!/datasets/animals-full/manifest.json

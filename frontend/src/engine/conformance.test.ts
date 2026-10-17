@@ -169,6 +169,9 @@ describe.each(golden.datasets.map((c) => [c.id, c] as const))('dataset %s', (id,
 })
 
 it('covers every dataset that ships', () => {
-  const shipped = new Set(Object.keys(files).filter((p) => p.endsWith('/tree.json')).map((p) => p.split('/').slice(-2)[0]))
+  // A manifest naming a `release` is a remote tree, built on one machine and
+  // fetched from a GitHub Release elsewhere, so conformance.py leaves it out.
+  const remote = (id: string) => Boolean((JSON.parse(files[`../../../datasets/${id}/manifest.json`]) as { release?: string }).release)
+  const shipped = new Set(Object.keys(files).filter((p) => p.endsWith('/tree.json')).map((p) => p.split('/').slice(-2)[0]).filter((id) => !remote(id)))
   expect(new Set(golden.datasets.map((c) => c.id))).toStrictEqual(shipped)
 })

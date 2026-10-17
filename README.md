@@ -24,6 +24,7 @@ about it.
 | **Chess** | 446 openings | 11 | [Lichess's opening list](https://github.com/lichess-org/chess-openings), on the tree of the openings' own moves | none |
 | **Cities** | 622 cities | 5 | [Wikidata](https://www.wikidata.org)'s cities, countries and regions; continents and subregions from [Natural Earth](https://www.naturalearthdata.com) | ladder: continent → subregion → country |
 | **Plants** | 469 plants | 16 | [Wikidata](https://www.wikidata.org)'s taxonomy (parent taxon, P171), species and genera chosen by how many Wikipedias cover them | the Linnaean ladder |
+| **All animals** | 41,153 species | 85 | [Wikidata](https://www.wikidata.org)'s tree of life: every animal six or more Wikipedias cover, TaxoQuiz Full's data. Built locally and published as a release rather than committed | the Linnaean ladder |
 
 Each tree was picked to test something different. Maths is shallow with clean
 ranks. Languages has no ranks at all, so warmth comes from the tree's shape
@@ -245,8 +246,9 @@ the right place, and shares as a grid of squares.
 ```
 src/treequiz/   the engine, in Python: the reference implementation, CLI and validator
 frontend/       the app: React + MUI + react-d3-tree, with the engine ported to TypeScript
-datasets/       one directory per tree; committed
+datasets/       one directory per tree; committed, but for a remote tree's built files
 datagen/        builders and the importer; downloads go to datagen/_cache/ (ignored)
+docs/           what TaxoQuiz learned that the code does not say, and the merge plan
 tests/          the Python suite, and the generator of the conformance file
 ```
 
@@ -285,6 +287,11 @@ popup.
   names are TreeQuiz's own, following the 2011 MIMO revision that Wikidata's
   numbers use.
 - **Animals**: the taxonomy is TaxoQuiz's hand-curated tree.
+- **All animals**: species, names and parent taxa from
+  [Wikidata](https://www.wikidata.org) (CC0); where Wikidata calls one
+  species another's synonym, the [Catalogue of Life](https://www.catalogueoflife.org)
+  ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)) is asked too,
+  and a species is merged only when both agree.
 - **Physics**: PhySH, the Physics Subject Headings, by the American Physical
   Society, in the public domain (CC0). Where PhySH gives a topic several
   parents TreeQuiz chose one, and topics are chosen by how many Wikipedias
