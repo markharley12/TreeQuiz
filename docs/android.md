@@ -31,8 +31,10 @@ and keeps the APK as an artifact.
   app took them for its Animals.
 - **No Manage trees in the app**: with every tree built in there is nothing
   to download or delete (`ALL_BUNDLED` in `downloads.ts` hides the link), and
-  each card says "In the app" with what the tree takes (Animals 46 MB,
-  counted over all its files, not only what a download would fetch first).
+  each card says "In the app" with what the tree takes on the phone: all its
+  files, compressed, since Android keeps an APK's assets deflated and never
+  unpacks them (Animals 9.7 MB, 45.6 MB as text; the owner asked why a
+  "46 MB" tree fit a 14.5MB app).
 - **No service worker in the app** (`main.tsx`): it is served from its own
   package, so offline already.
 - **The back button** (`backButton.ts`, TaxoQuiz's): closes the newest

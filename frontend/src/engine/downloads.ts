@@ -522,7 +522,8 @@ export interface TreeState {
   /** Big enough to ask before downloading (over ASK_BYTES). */
   big: boolean
   /** What the device holds of it. `missing` is what a download would still
-   *  fetch of the files it fetches up front. */
+   *  fetch of the files it fetches up front. A bundled tree's bytes are
+   *  compressed, as the APK holds them; a download's are as stored. */
   copy: { version: string; bytes: number; missing: number } | null
   /** What downloading it, or updating it, costs: null when the device has the
    *  newest, or no version is to be had (a remote tree the build lacked,
@@ -541,8 +542,11 @@ function stateOf(id: string): TreeState {
   const job = jobs.get(id)
   let held: TreeState['copy'] = null
   if (entry.bundled && top) {
-    // All of it is in the app, not only what a download would fetch first.
-    held = { version: top.version, bytes: sizeOf(top, Object.keys(top.files)).bytes, missing: 0 }
+    // All of it is in the app, not only what a download would fetch first,
+    // and compressed: Android keeps an APK's assets deflated and never
+    // unpacks them, so the gzip size is what the tree takes on the phone
+    // (animals: 45.6MB as text, 9.7MB in the APK).
+    held = { version: top.version, bytes: sizeOf(top, Object.keys(top.files)).gzip, missing: 0 }
   } else if (copy) {
     const want = downloadSet(copy).filter((n) => !copy.have.includes(n))
     held = { version: copy.version, bytes: sizeOf(copy, copy.have).bytes, missing: sizeOf(copy, want).bytes }

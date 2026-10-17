@@ -265,7 +265,7 @@ describe('the app (bundled trees, and a remote catalogue)', () => {
     const bundled = { ...small, bundled: true }
     serve({ trees: [bundled] }, bodies)
     const d = await load({ trees: [bundled, { ...big, files: null, version: null }] })
-    expect(d.downloads().trees.get('small')).toMatchObject({ bundled: true, copy: { bytes: 200 }, offer: null })
+    expect(d.downloads().trees.get('small')).toMatchObject({ bundled: true, copy: { bytes: 40 }, offer: null })
     expect(d.downloads().trees.get('big')).toMatchObject({ copy: null, offer: null })
     expect(await d.readJson('small', 'tree.json')).toEqual(tree('small'))
     expect(storage.get('treequiz-data')?.size ?? 0).toBe(0)
@@ -282,8 +282,9 @@ describe('the app (bundled trees, and a remote catalogue)', () => {
       { manifest: { title: 'sized', sizes: { min: 500, default: 500 } }, bundled: true })
     const d = await load({ trees: [{ ...small, bundled: true }, sized] })
     expect(d.ALL_BUNDLED).toBe(true)
-    // Not only the tiers a download would fetch first: the whole tree is in the app.
-    expect(d.downloads().trees.get('sized')?.copy?.bytes).toBe(36 * MB + 100)
+    // The whole tree, not only the tiers a download would fetch first, and
+    // compressed, as the APK holds it.
+    expect(d.downloads().trees.get('sized')?.copy?.bytes).toBe(36 * MB / 5 + 20)
   })
 })
 
