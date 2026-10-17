@@ -21,6 +21,7 @@ import { ladder, type Ladder } from './lineupReveal'
 import { reveal, type Reveal } from './oddReveal'
 import { leavesOf } from './engine/game'
 import { matchedAliases } from './aliasHint'
+import { downloads, whenReady } from './engine/downloads'
 
 export type { TreeNode } from './engine/game'
 export type { ExploreNode, ExploreHit, ExploreStats, Lineage } from './engine/explore'
@@ -133,11 +134,16 @@ export async function fetchStats(dataset: string): Promise<ExploreStats> {
  *  leaves, so a seed alone says where it belongs — which is what lets a pasted
  *  seed switch tree or size rather than only being refused. Loads every tree,
  *  and cuts each sized one at every stop, to find out, so it is asked only
- *  once a seed has been rejected by the current game. */
+ *  once a seed has been rejected by the current game — and only every tree
+ *  that would download without asking: a big one not on the device is not
+ *  fetched for it. */
 export async function datasetForSeed(seed: string): Promise<string | null> {
   const tag = tagOf(seed)
   if (tag === null) return null
+  await whenReady()
   for (const { id } of DATASETS) {
+    const t = downloads().trees.get(id)
+    if (!t?.copy && (!t?.offer || t.offer.ask)) continue
     const sizes = sizesFor(id)
     const games = sizes ? [...sizes.stops, 'all' as Size].map((s) => gameId(id, s)) : [id]
     for (const game of games) {

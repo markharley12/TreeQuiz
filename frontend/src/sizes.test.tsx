@@ -16,8 +16,8 @@ const startOddSet = vi.fn()
 
 const SIZES = { min: 500, default: 2000, stops: [500, 1000, 2000] }
 const ENTRIES = [
-  { id: 'trees', hasInfo: false, manifest: { title: 'Trees', short_title: 'Trees', noun: 'tree', noun_plural: 'trees', prompt: 'Guess the tree.', sizes: SIZES } as Manifest },
-  { id: 'plain', hasInfo: false, manifest: { title: 'Plain', short_title: 'Plain', noun: 'leaf', noun_plural: 'leaves', prompt: 'Guess the leaf.' } as Manifest },
+  { id: 'trees', manifest: { title: 'Trees', short_title: 'Trees', noun: 'tree', noun_plural: 'trees', prompt: 'Guess the tree.', sizes: SIZES } as Manifest },
+  { id: 'plain', manifest: { title: 'Plain', short_title: 'Plain', noun: 'leaf', noun_plural: 'leaves', prompt: 'Guess the leaf.' } as Manifest },
 ]
 
 vi.mock('./engine/datasets', async (importOriginal) => {

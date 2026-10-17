@@ -19,6 +19,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Reading releases, for the trees kept in them.
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: frontend
@@ -32,6 +35,26 @@ jobs:
       - run: npm install -g npm@11
       - run: npm ci
       - run: npm test -- --run
+      # A tree too big for git keeps its files in a GitHub Release, which its
+      # manifest names (`"release": "<tag>"`); the assets are named as the
+      # files sit in datasets/<id>/. Fetched after the tests, which cover the
+      # trees in git, and before the build, which hashes them into the site's
+      # data/ and lists them in datasets.json. A tree that names a release and
+      # does not get its tree.json fails the deploy rather than vanishing.
+      - name: Fetch trees kept in releases
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for manifest in datasets/*/manifest.json; do
+            dir=$(dirname "$manifest")
+            tag=$(jq -r '.release // empty' "$manifest")
+            if [ -z "$tag" ] || [ -f "$dir/tree.json" ]; then continue; fi
+            echo "$dir: release $tag"
+            gh release download "$tag" --repo "${{ github.repository }}" --dir "$dir" --pattern '*.json' --skip-existing
+            test -f "$dir/tree.json"
+            ls -l "$dir"
+          done
       - run: npm run build:pages
       - uses: actions/upload-pages-artifact@v5
         with:
