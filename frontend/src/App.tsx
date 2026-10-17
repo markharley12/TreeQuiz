@@ -29,7 +29,7 @@ import { guessWarmths, readDailies, recordDaily, shareText } from './results'
 import { bulkUnlock, noun, nounPlural, shortTitle } from './words'
 import { chooseSize, chosenSize, GameContext, gameId, leafCount, parseGame, shortSize, sizesFor, sizeText, type Size } from './sizes'
 import { useDownloads, useTree } from './useDownloads'
-import { download } from './engine/downloads'
+import { ALL_BUNDLED, download } from './engine/downloads'
 import { formatBytes } from './engine/catalogue'
 import { useCloseOnBack } from './backButton'
 
@@ -477,7 +477,8 @@ function Round({ dataset, game, size, manifest, nav, onSwitch, onManage }: Round
 
         <DatasetPicker selected={dataset} onPick={(id) => id !== dataset && onSwitch(id, { landing: true, seed: null })} />
         <Box sx={{ textAlign: 'right', mt: 0.75 }}>
-          <Link component="button" variant="body2" onClick={onManage}>Manage trees</Link>
+          {/* Nothing to manage in the Android app, which has every tree built in. */}
+          {!ALL_BUNDLED && <Link component="button" variant="body2" onClick={onManage}>Manage trees</Link>}
         </Box>
         <UpdateNotice dataset={dataset} title={shortTitle(manifest)} />
 

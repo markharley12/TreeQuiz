@@ -59,6 +59,10 @@ interface Copy extends Located {
 
 export const BAKED: ReadonlyMap<string, CatalogueTree> = new Map(baked.trees.map((t) => [t.id, t]))
 
+/** Every tree is part of the app (the Android build bundles them all), so
+ *  there is nothing to download or delete, and no Manage trees. */
+export const ALL_BUNDLED = BAKED.size > 0 && [...BAKED.values()].every((t) => t.bundled)
+
 function locate(entry: CatalogueTree, base: string): Located | null {
   if (!entry.files || !entry.version) return null
   const files: Located['files'] = {}
@@ -537,7 +541,8 @@ function stateOf(id: string): TreeState {
   const job = jobs.get(id)
   let held: TreeState['copy'] = null
   if (entry.bundled && top) {
-    held = { version: top.version, bytes: sizeOf(top, downloadSet(top)).bytes, missing: 0 }
+    // All of it is in the app, not only what a download would fetch first.
+    held = { version: top.version, bytes: sizeOf(top, Object.keys(top.files)).bytes, missing: 0 }
   } else if (copy) {
     const want = downloadSet(copy).filter((n) => !copy.have.includes(n))
     held = { version: copy.version, bytes: sizeOf(copy, copy.have).bytes, missing: sizeOf(copy, want).bytes }

@@ -15,9 +15,11 @@ interface Props {
 }
 
 /** Where a tree stands on this device, for its card: every tree is listed,
- *  downloaded or not, with what it takes. */
+ *  downloaded or not, with what it takes. In the Android app every tree is
+ *  built in, and the card says so with its size. */
 function deviceNote(t: TreeState | undefined): string {
-  if (!t || t.bundled) return ''
+  if (!t) return ''
+  if (t.bundled) return t.copy ? `In the app · ${formatBytes(t.copy.bytes)}` : 'In the app'
   if (t.progress) return `Downloading… ${t.progress.total ? Math.floor((100 * t.progress.done) / t.progress.total) : 0}%`
   if (t.copy && t.update && t.big) return `On this device · update ${formatBytes(t.offer!.gzip)}`
   if (t.copy) return `On this device · ${formatBytes(t.copy.bytes)}`

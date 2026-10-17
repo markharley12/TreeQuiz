@@ -1,7 +1,7 @@
 import { Alert, Box, Button, CircularProgress, Link, Stack, Typography } from '@mui/material'
 import DatasetPicker from './DatasetPicker'
 import Progress from './DownloadProgress'
-import { cancel, download, refresh } from '../engine/downloads'
+import { ALL_BUNDLED, cancel, download, refresh } from '../engine/downloads'
 import { formatBytes } from '../engine/catalogue'
 import { useTree } from '../useDownloads'
 import { shortTitle } from '../words'
@@ -67,7 +67,7 @@ export default function DownloadGate({ dataset, ready, onPick, onManage }: Props
           <Typography sx={{ fontFamily: FONT_DISPLAY, fontSize: '1.15rem' }}>{t.manifest.blurb}</Typography>
           {panel}
           {t.error && <Alert severity="error">{t.error}</Alert>}
-          <Link component="button" variant="body2" onClick={onManage}>Manage trees</Link>
+          {!ALL_BUNDLED && <Link component="button" variant="body2" onClick={onManage}>Manage trees</Link>}
         </Stack>
       </Box>
     </Box>

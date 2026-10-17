@@ -274,6 +274,16 @@ describe('the app (bundled trees, and a remote catalogue)', () => {
     liveCatalogue = { trees: [big] }
     await d.refresh()
     expect(d.downloads().trees.get('big')).toMatchObject({ offer: { ask: true } })
+    expect(d.ALL_BUNDLED).toBe(false)
+  })
+
+  it('knows when every tree is built in, and counts all of each', async () => {
+    const sized = entry('sized', 's1', { 'tree.json': { bytes: 6 * MB }, 'info-500.json': {}, 'info-9000.json': { bytes: 30 * MB } },
+      { manifest: { title: 'sized', sizes: { min: 500, default: 500 } }, bundled: true })
+    const d = await load({ trees: [{ ...small, bundled: true }, sized] })
+    expect(d.ALL_BUNDLED).toBe(true)
+    // Not only the tiers a download would fetch first: the whole tree is in the app.
+    expect(d.downloads().trees.get('sized')?.copy?.bytes).toBe(36 * MB + 100)
   })
 })
 

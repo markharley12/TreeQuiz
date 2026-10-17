@@ -29,6 +29,10 @@ and keeps the APK as an artifact.
   where the build's is not, or the reverse) must be ignored (`sameKind` in
   `downloads.ts`): against a site still serving the 530 as `animals`, the
   app took them for its Animals.
+- **No Manage trees in the app**: with every tree built in there is nothing
+  to download or delete (`ALL_BUNDLED` in `downloads.ts` hides the link), and
+  each card says "In the app" with what the tree takes (Animals 46 MB,
+  counted over all its files, not only what a download would fetch first).
 - **No service worker in the app** (`main.tsx`): it is served from its own
   package, so offline already.
 - **The back button** (`backButton.ts`, TaxoQuiz's): closes the newest
