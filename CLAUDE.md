@@ -15,8 +15,9 @@ Nine datasets — **maths** (MSC2020, 517 fields), **languages** (Glottolog,
 415), **instruments** (Hornbostel–Sachs, 428), **animals** (TaxoQuiz's 530),
 **chess** (Lichess, 446 openings), **physics** (PhySH, 487 topics),
 **chemistry** (ChEBI, 465 chemicals), **cities** (Wikidata and Natural
-Earth, 622), **plants** (Wikidata's taxonomy, 469). Two games: the guessing
-round and odd one out. Python suite 193 tests, frontend 501, both green;
+Earth, 622), **plants** (Wikidata's taxonomy, 469). Three games: the
+guessing round, odd one out and line-up. Python suite 220 tests, frontend
+524, both green;
 CI and Pages workflows written but **the repo has not been pushed** and has no
 GitHub remote yet. No Android build (TaxoQuiz's Capacitor setup was left out).
 
@@ -70,8 +71,9 @@ five, 1,055KB with seven, 1,127KB with eight, 1,293KB with nine — so it was
 cut again: the depth-two subtree from the top (the depth-one case there still
 runs the limit) and one of two random lineages per tree, to 1,175KB. Checked
 with vitest's coverage of `src/engine/` from the conformance test alone,
-before and after: no line, branch or function lost its case. Trim again past
-about 1.2MB, the same way. The cut was checked by mutation and found an old gap: a child landing
+before and after: no line, branch or function lost its case. Line-up's sets
+took it to 1,203KB. Trim again past about 1.2MB, the same way; the search
+cases (two limits per query) are the likeliest next cut. The cut was checked by mutation and found an old gap: a child landing
 *exactly* on its parent's warmth (`<=` against `<` in the floor) was reached by
 no case; the synthetic `C0`/`P`/`C` tree now reaches it.
 
@@ -97,6 +99,32 @@ different game); it is dealt on arrival while unplayed, kept first finish
 only under `treequiz:odddaily:<id>`, and reopens on its score rather than
 being dealt twice. Its streak counts days played, not won: a set has a
 score, not an outcome.
+
+## Line-up — the third game
+
+`src/treequiz/lineup.py` (reference), `frontend/src/engine/lineup.ts`
+(port), both in the conformance file. A target and four others to order by
+how near each sits to it: each meets the target at a different ancestor
+(a **level**: an ancestor with a branch besides the target's, so a genus of
+one species is none), which fixes the order with no rank or warmth. Built
+from the target up: four levels, then a leaf from another branch at each,
+drawn as a run of the tree's leaves less the target's branch (`span`), so
+no list of leaves per node is kept. Difficulty is a **window** of the
+target's deepest levels (all, two thirds, a third, never under four), cut
+into four runs with a level drawn from each, so the four never bunch; a set
+of five runs easy, easy, medium, medium, hard. Scored by names in place,
+out of 20. The reveal (`lineupReveal.ts`, display only) is a ladder down
+the target's lineage built from odd one out's boxes (`box`, now exported).
+Keys `treequiz:lineup|lineuptally|lineupdaily:<id>`, links `&lineup=`.
+
+The two set games share their life on a tree — the deal on arrival, today's
+set, the tally, the record — in `setGame.ts` (`useSetGame`) over
+`setStore.ts` (which replaced `oddStore.ts`, keeping odd one out's keys),
+and their header, dots and summary in `components/SetParts.tsx`; each
+keeps only its puzzle and its reveal. A dot is amber for a partial score.
+**A key a game handles is used up** (`preventDefault`): Enter checked a
+line-up and its keypress then landed on the Next button checking had just
+focused, skipping the answer.
 
 ## Frontend decisions new here
 

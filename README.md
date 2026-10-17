@@ -58,6 +58,10 @@ node shows *which branch* the answer is on, never how deep.
   which share a group the third is not in. A rooted tree decides that
   exactly, so every puzzle has one answer, and the answer is drawn as the
   tree of the three. A set is ten, easy to hard, and has a seed like a round.
+- **Line-up** is a third: a target and four others, to put in order of how
+  near each sits to the target. Each meets it at a different ancestor, so
+  there is one right order, and the answer is drawn as a ladder down the
+  target's lineage. A set is five, easy to hard.
 - **Explore** has no secret: open the tree anywhere and read it. Every node has
   a popup. For maths that's its MSC topics; for animals and languages it's the
   Wikipedia summary; for chess, the position's board.
@@ -83,6 +87,7 @@ python3 -m venv .venv && .venv/bin/pip install -e ".[test]"
 .venv/bin/treequiz list
 .venv/bin/treequiz play languages
 .venv/bin/treequiz odd cities
+.venv/bin/treequiz lineup plants
 .venv/bin/treequiz explore maths
 ```
 
@@ -217,6 +222,23 @@ joins them only at Boreoeutheria, so the sheep is the odd one out. Most
 people guess the orangutan. A set is ten puzzles, getting harder as the
 place where all three meet gets more specific. Each answer is drawn as the
 tree of the three. Every day has its own set, the same for everyone.
+
+## Line-up
+
+The third game asks for more than one comparison at a time. A target, and
+four others to put in order, nearest first. Each of the four meets the
+target at a different one of its ancestors, so the tree fixes the order and,
+again, no judgement goes into it.
+
+![Line-up: Indianapolis, Quebec City, Monterrey and Curitiba, nearest to Pittsburgh first](docs/images/lineup.png)
+
+Above, Indianapolis shares a country with Pittsburgh, Quebec City only
+Northern America, Monterrey only the continent, and Curitiba only the
+world. The answer is a ladder down Pittsburgh's lineage, with each city
+hanging off the rung where it joins. Easy puzzles spread their four rungs
+over the whole lineage; hard ones pack them just above the target (a
+family, a subfamily, a tribe, a genus). A set is five, scored by names in
+the right place, and shares as a grid of squares.
 
 ## Layout
 
