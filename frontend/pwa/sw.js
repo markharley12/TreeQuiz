@@ -13,7 +13,8 @@
 //   swap the code under a page that is still running the old one.
 // - The old cache is deleted on activate, when nothing uses it any more.
 //
-// So an update reaches a player the second time they open the app after a
+// (One exception, below: a build from before the downloads is replaced at
+// once, since its pages break.) So an update reaches a player the second time they open the app after a
 // deploy. That is the price of never breaking a round in play.
 //
 // **The trees are not here.** They are downloads the player chose, kept by the
@@ -34,15 +35,49 @@ const CACHE = PREFIX + VERSION
 const url = (name) => new URL(name, SCOPE).href
 const PRECACHED = new Set(FILES.map(url))
 
+// The one exception to waiting. Builds before the downloads kept the trees in
+// the build itself, fetched from `assets/tree-<hash>.json` on first open, so
+// once a deploy removed those files an old page could open no tree it had not
+// opened before: "Could not load …/assets/tree-CU7Kz8S9.json" on every tree
+// but the last played, seen on the live site the day the downloads went up,
+// and lasting until every TreeQuiz tab was closed. So a worker that finds such
+// a build's cache takes over at once and reloads its pages; a round in play is
+// saved, and resumes. Every cache of this layout carries LAYOUT, which is how
+// an old one is told apart: their contents cannot be, since an old build
+// cached its trees only once opened. The first deploy after this one also
+// takes over once from the build before it, which had no LAYOUT entry yet.
+const LAYOUT = url('__layout-downloads')
+const replacingOld = async () => {
+  for (const key of await caches.keys()) {
+    if (!key.startsWith(PREFIX) || key === CACHE) continue
+    if (!(await (await caches.open(key)).match(LAYOUT))) return true
+  }
+  return false
+}
+
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(FILES)))
+  event.waitUntil(
+    caches.open(CACHE)
+      .then((cache) => Promise.all([cache.addAll(FILES), cache.put(LAYOUT, new Response('1'))]))
+      .then(replacingOld)
+      .then((old) => old && self.skipWaiting()),
+  )
 })
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(
-      keys.filter((key) => key.startsWith(PREFIX) && key !== CACHE).map((key) => caches.delete(key)),
-    )),
+    replacingOld().then(async (old) => {
+      const keys = await caches.keys()
+      await Promise.all(keys.filter((key) => key.startsWith(PREFIX) && key !== CACHE).map((key) => caches.delete(key)))
+      if (!old) return
+      await self.clients.claim()
+      // Started and NOT awaited: a navigation's request is held until this
+      // worker has activated, so awaiting it here deadlocks — TaxoQuiz's
+      // worker froze every tab on the origin that way.
+      for (const client of await self.clients.matchAll({ type: 'window' })) {
+        client.navigate(client.url).catch(() => {})
+      }
+    }),
   )
 })
 

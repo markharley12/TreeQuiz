@@ -347,8 +347,25 @@ update in the background, fetching nothing; Delete removed the files, the
 copy and the tree's saved keys, and the gate came back. Chrome turned
 `persist()` down on an origin with no engagement, as it does; not seen granted.
 
-**Not verified**: the Pages workflow's release step (no release exists yet),
-the app build (`VITE_DATA_BASE`) beyond the unit test, and two tabs at once
+**The first deploy broke every returning player** (17 Oct 2026). The build
+before the downloads kept its trees in the build, fetched from
+`assets/tree-<hash>.json` on first open, and its worker waits for every tab
+to close before handing over; so after the deploy removed those files, the
+old page could open no tree it had not opened before ("Could not load
+…/assets/tree-CU7Kz8S9.json"). The downloads cannot have this — a 404 there
+re-reads `datasets.json` and starts over — so it was the hand-over alone.
+`sw.js` now takes over at once, and reloads its pages, when it finds a cache
+of its scope without the `__layout-downloads` entry every new cache carries,
+as TaxoQuiz's worker did for its split. Checked locally: the old build in
+control, the new deployed, one reload — the page reloaded itself onto the new
+build and today's maths played; a further ordinary deploy still waited. The
+deploy after this one takes over once more, from 458fdba's cache, which has
+no entry yet.
+
+The Pages workflow's release step ran on the first deploy with
+`animals-full-2026-10-17`, and the live site downloaded and played it.
+
+**Not verified**: the app build (`VITE_DATA_BASE`) beyond the unit test, and two tabs at once
 (a `BroadcastChannel` re-reads copies in the other tab). The first test in
 `App.test.tsx` and `GuessInput.test.tsx` can pass 5s on a loaded machine —
 the baseline's took the same 3.7s under the same load.
