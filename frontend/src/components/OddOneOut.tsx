@@ -28,14 +28,17 @@ interface Props {
   plural: string
   /** A set's seed from a link, to deal instead of resuming. */
   linkSeed: string | null
+  /** Whether this game has today's set: on a sized tree, only its default
+   *  size does (sizes.ts), and any other deals ordinary sets only. */
+  daily: boolean
 }
 
 /** A set runs easy to hard; see `treequiz/odd.py`. */
 const TIERS = ['Easy', 'Medium', 'Hard']
 
-export default function OddOneOut({ dataset, title, plural, linkSeed }: Props) {
+export default function OddOneOut({ dataset, title, plural, linkSeed, daily }: Props) {
   const game = useSetGame<Puzzle, string>({
-    game: 'odd', dataset, linkSeed, size: SET_SIZE, start: startOddSet,
+    game: 'odd', dataset, linkSeed, daily, size: SET_SIZE, start: startOddSet,
     points: (p, picked) => (picked === p.odd ? 1 : 0),
   })
   const { set, shown, puzzle, answered, today, day, dailies, tally } = game
@@ -90,7 +93,7 @@ export default function OddOneOut({ dataset, title, plural, linkSeed }: Props) {
   return (
     <Box sx={{ overflowY: 'auto', flex: '1 0 0', minHeight: 0, pb: 3 }}>
       <SetHeader
-        seed={set.seed} link={link} offerToday={day !== today} todayDone={Boolean(dailies[today])}
+        seed={set.seed} link={link} offerToday={daily && day !== today} todayDone={Boolean(dailies[today])}
         onToday={() => game.deal(game.todays())} onNew={() => game.deal()}
       />
 
@@ -109,7 +112,7 @@ export default function OddOneOut({ dataset, title, plural, linkSeed }: Props) {
           tallyText={tally.sets === 0 ? null : (tally.sets === 1 ? 'Your first set on this tree.'
             : `${tally.sets} sets on this tree: ${(tally.right / tally.sets).toFixed(1)} right on average, best ${tally.best}.`)
             + (setStreak(dailies, today) > 1 ? ` Today’s set ${setStreak(dailies, today)} days running.` : '')}
-          offerToday={day !== today && !dailies[today]}
+          offerToday={daily && day !== today && !dailies[today]}
           onToday={() => game.deal(game.todays())}
         />
       ) : puzzle && (

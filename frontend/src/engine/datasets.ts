@@ -17,11 +17,26 @@ import type { StoredInfo } from './info'
 const manifests = import.meta.glob<Manifest>('../../../datasets/*/manifest.json', { eager: true, import: 'default' })
 const treeUrls = import.meta.glob<string>('../../../datasets/*/tree.json', { eager: true, query: '?url', import: 'default' })
 const infoUrls = import.meta.glob<string>('../../../datasets/*/info.json', { eager: true, query: '?url', import: 'default' })
+const tierUrls = import.meta.glob<string>('../../../datasets/*/info-*.json', { eager: true, query: '?url', import: 'default' })
 
 const idOf = (path: string) => path.split('/').slice(-2)[0]
 const byId = <T>(files: Record<string, T>) => new Map(Object.entries(files).map(([p, v]) => [idOf(p), v]))
 const trees = byId(treeUrls)
 const infos = byId(infoUrls)
+
+/** A sized tree's popup text in tiers: `info-<n>.json` holds what a cut to
+ *  `n` adds to the stop before (see treequiz/size.py). Smallest first. */
+export interface InfoTier {
+  n: number
+  url: string
+}
+const tiers = new Map<string, InfoTier[]>()
+for (const [path, url] of Object.entries(tierUrls)) {
+  const n = /\/info-(\d+)\.json$/.exec(path)?.[1]
+  if (n === undefined) continue
+  const id = idOf(path)
+  tiers.set(id, [...(tiers.get(id) ?? []), { n: Number(n), url }].sort((a, b) => a.n - b.n))
+}
 
 export interface DatasetEntry {
   id: string
@@ -31,7 +46,7 @@ export interface DatasetEntry {
 
 /** Every playable dataset — one with a tree — in picker order. */
 export const DATASETS: DatasetEntry[] = Object.entries(manifests)
-  .map(([path, manifest]) => ({ id: idOf(path), manifest, hasInfo: infos.has(idOf(path)) }))
+  .map(([path, manifest]) => ({ id: idOf(path), manifest, hasInfo: infos.has(idOf(path)) || tiers.has(idOf(path)) }))
   .filter((d) => trees.has(d.id))
   .sort((a, b) => (a.manifest.order ?? 99) - (b.manifest.order ?? 99) || (a.id < b.id ? -1 : 1))
 
@@ -87,9 +102,32 @@ export function loadedDataset(id: string): Dataset | undefined {
   return built.get(id)
 }
 
-export async function loadInfo(id: string): Promise<Record<string, StoredInfo>> {
+/** The tiers a tree cut to `upTo` needs: each up to the first that holds the
+ *  whole cut. All of them for the whole tree, `upTo` left out. */
+export function tiersUpTo<T extends { n: number }>(all: T[], upTo = Infinity): T[] {
+  const last = all.findIndex((t) => t.n >= upTo)
+  return last === -1 ? all : all.slice(0, last + 1)
+}
+
+const merged = new Map<string, Promise<Record<string, StoredInfo>>>()
+
+/** Popup text for a tree, or for a sized tree cut to `upTo`: one `info.json`,
+ *  or the tiers that size needs, fetched once each and read as one. */
+export async function loadInfo(id: string, upTo?: number): Promise<Record<string, StoredInfo>> {
   const url = infos.get(id)
-  return url ? fetchInfo(url) : {}
+  if (url) return fetchInfo(url)
+  const wanted = tiersUpTo(tiers.get(id) ?? [], upTo)
+  if (wanted.length === 0) return {}
+  const key = wanted.map((t) => t.url).join('\n')
+  let all = merged.get(key)
+  if (!all) {
+    // No prototype, so a node named __proto__ is a key like any other.
+    all = Promise.all(wanted.map((t) => fetchInfo(t.url)))
+      .then((parts) => Object.assign(Object.create(null) as Record<string, StoredInfo>, ...parts))
+    all.catch(() => merged.delete(key))
+    merged.set(key, all)
+  }
+  return all
 }
 
 /** A localStorage key per dataset, so each keeps its own round. */

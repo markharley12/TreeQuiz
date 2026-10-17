@@ -5,6 +5,7 @@ import { type TreeNode } from '../api'
 import { makeColorScale, makeTintScale } from '../colors'
 import { CARD, INK, INK_MUTED, LINE, TREE_LINK, FONT_DISPLAY } from '../theme'
 import { useSettings } from '../settings'
+import { treeOf, useGame } from '../sizes'
 import { useCoarsePointer } from '../media'
 import { frameTree, placedNodes, TRANSLATE } from '../framing'
 import { cachedInfo, useInfoCache } from '../infoCache'
@@ -47,7 +48,7 @@ function NodeLabel({ nodeData, size, onClick, onHover, onHoverEnd, colorFor, tin
   const primary = clickable ? taxa.split(' › ')[0] : ''
   const thumb = primary ? cachedInfo(primary, dataset)?.image_url ?? '' : ''
   const warmth = nodeData.attributes?.warmth as number
-  const text = displayName(chainText(nodeData.name, entryFor(dataset)?.manifest))
+  const text = displayName(chainText(nodeData.name, entryFor(treeOf(dataset))?.manifest))
 
   const color = colorFor(warmth)
 
@@ -163,9 +164,10 @@ type Shortcut = 'newest' | 'secret'
 
 export default function GameTree({ treeData, focusLabel, newestLabel }: GameTreeProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const { colorScheme, orientation, dataset } = useSettings()
+  const { colorScheme, orientation } = useSettings()
+  const dataset = useGame()
   const coarse = useCoarsePointer()
-  const size = boxFor(coarse ? BOX_SIZES.coarse : BOX_SIZES.fine, Boolean(entryFor(dataset)?.manifest.long_labels))
+  const size = boxFor(coarse ? BOX_SIZES.coarse : BOX_SIZES.fine, Boolean(entryFor(treeOf(dataset))?.manifest.long_labels))
   const spacing = gameSpacing(size)
   useInfoCache()   // a lookup landing repaints the thumbnails
   const { preview, startHover, cancelHover } = useHoverPreview(containerRef, dataset)
@@ -337,7 +339,7 @@ export default function GameTree({ treeData, focusLabel, newestLabel }: GameTree
   if (!treeData) return null
   const hasSecret = deepestKnown(treeData) !== null
 
-  const compressed = compress(treeData, entryFor(dataset)?.manifest)
+  const compressed = compress(treeData, entryFor(treeOf(dataset))?.manifest)
   const d3Data = nodeToD3(compressed)
   // No dataset anchor: the API sends each node's rank position directly, and
   // a rank means the same thing in every dataset. See colors.ts.

@@ -231,3 +231,17 @@ def test_the_cli_daily_is_at_the_default_size(datasets_dir, monkeypatch, capsys)
     assert cli.main(["play", "famed", "--daily", "--size", "6"]) == 0
     tag = capsys.readouterr().out.split("Seed ")[1][:4]
     assert tag == seed.fingerprint(leaves(dataset.load("famed").at_size(4).tree))
+
+
+def test_the_share_of_rank_claims_rejected_is_judged_on_the_whole_tree_only():
+    # A bad claim high up (a "genus" above a class) among sixty good ones:
+    # 2 in 62 for the whole tree, but a cut to the famous leaves keeps the bad
+    # claim and drops most good ones. The data's rot is the whole tree's.
+    ladder = {"levels": {"kingdom": 0, "class": 2, "genus": 5, "species": 6}, "top": 6}
+    good = [n(f"G{i}", "genus", n(f"g{i}", "species", fame=1)) for i in range(60)]
+    bad = n("X", "genus", n("C", "class", n("famous", "species", fame=100), n("known", "species", fame=90)))
+    tree = n("root", "kingdom", bad, *good)
+    ds = dataset.from_tree(tree, {"title": "T", "ladder": ladder, "sizes": {"min": 2, "default": 2}}, "t")
+    report = validate(ds)
+    assert report.ok, report.render()
+    assert any("rejected by the tree: 2 of 62" in x for x in report.notes)

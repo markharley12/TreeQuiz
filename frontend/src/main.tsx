@@ -16,11 +16,17 @@ import { theme } from './theme'
 import { setSetting } from './settings'
 import { readLink } from './shareLink'
 import { entryFor } from './engine/datasets'
+import { chooseSize, validSize } from './sizes'
 
-// A shared link names its tree. Switched to before the first render, so the
-// round mounts on the right dataset and is the one to read the link's seed.
+// A shared link names its tree, and a sized tree's size. Switched to before
+// the first render, so the round mounts on the right game and is the one to
+// read the link's seed. A size the tree does not offer is ignored.
 const link = readLink(window.location.search)
-if (link.dataset && entryFor(link.dataset)) setSetting('dataset', link.dataset)
+if (link.dataset && entryFor(link.dataset)) {
+  setSetting('dataset', link.dataset)
+  const size = validSize(link.dataset, link.size)
+  if (size !== null) chooseSize(link.dataset, size)
+}
 
 // Offline support for the website, which is what makes "Add to Home Screen"
 // behave like an app; see pwa/sw.js. Never in development, where a cached build

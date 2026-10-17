@@ -264,7 +264,7 @@ def dataset_cases(ds: dataset.Dataset, rng: random.Random) -> dict:
     }
 
 
-def shipped(ds_id: str) -> dataset.Dataset:
+def cased(ds_id: str) -> dataset.Dataset:
     """A shipped dataset as its cases see it: a sized tree cut to its smallest
     size, since warmth over all of a 57,000-node tree would be megabytes, and
     the cut itself is checked on the synthetic tree above."""
@@ -288,7 +288,7 @@ def build() -> dict:
         "odd": odd_cases(),
         "lineup": lineup_cases(),
         "size": {"tree": SIZE_TREE, "cuts": size_cases()},
-        "datasets": [dataset_cases(shipped(i), rng) for i in dataset.available()],
+        "datasets": [dataset_cases(cased(i), rng) for i in dataset.available()],
     }
 
 

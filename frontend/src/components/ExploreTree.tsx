@@ -5,6 +5,7 @@ import { fetchExplore, fetchLineage, searchExplore, type ExploreNode, type Explo
 import { makeColorScale, makeTintScale } from '../colors'
 import { CARD, INK, INK_MUTED, LINE, TREE_BLEED, TREE_LINK, FONT_DISPLAY, FONT_UI } from '../theme'
 import { useSettings } from '../settings'
+import { treeOf, useGame } from '../sizes'
 import { useCoarsePointer, useNarrow } from '../media'
 import { frameTree, placedNodes } from '../framing'
 import { anchorAt, findAnchor, sameView, viewForAnchor, type Anchor, type View } from '../gameLayout'
@@ -154,11 +155,12 @@ function NodeBox({ nodeData, color, tint, size, onHover, onHoverEnd, onToggle, o
 
 export default function ExploreTree() {
   const containerRef = useRef<HTMLDivElement>(null)
-  const { colorScheme, orientation, dataset } = useSettings()
+  const { colorScheme, orientation } = useSettings()
+  const dataset = useGame()
   const coarse = useCoarsePointer()
   const narrow = useNarrow()
   const [viewport, setViewport] = useState({ w: 0, h: 0 })
-  const longLabels = Boolean(entryFor(dataset)?.manifest.long_labels)
+  const longLabels = Boolean(entryFor(treeOf(dataset))?.manifest.long_labels)
   const size = useMemo(() => {
     const base = nodeSizeFor(coarse ? NODE_SIZES.coarse : NODE_SIZES.fine, longLabels)
     // Only touch sizing has to fit two columns; the mouse box is small enough
@@ -215,7 +217,7 @@ export default function ExploreTree() {
   // tree — which re-framed the view a frame after the jump had centred it.
   const jumped = useRef<string | null>(null)
   const [confirmExpand, setConfirmExpand] = useState(false)
-  const manifest = entryFor(dataset)?.manifest
+  const manifest = entryFor(treeOf(dataset))?.manifest
   const showNames = !manifest?.hide_names
   const nouns = nounsOf(manifest)
 
