@@ -1,0 +1,173 @@
+{
+  "order": 10,
+  "title": "Animals of Wikidata",
+  "short_title": "All animals",
+  "prompt": "Guess the secret animal among tens of thousands, from the lion to the obscurest beetle.",
+  "blurb": "Up to 41,000 species from Wikidata's tree of life. Start with the 2,000 best known, or slide out to every one.",
+  "noun": "animal",
+  "noun_plural": "animals",
+  "ladder": {
+    "levels": {
+      "life": -1.0,
+      "domain": -0.5,
+      "realm": -0.5,
+      "superkingdom": -0.2,
+      "kingdom": 0.0,
+      "subkingdom": 0.3,
+      "infrakingdom": 0.5,
+      "superphylum": 0.8,
+      "phylum": 1.0,
+      "subphylum": 1.3,
+      "infraphylum": 1.5,
+      "microphylum": 1.6,
+      "megaclass": 1.75,
+      "superclass": 1.85,
+      "class": 2.0,
+      "subclass": 2.3,
+      "infraclass": 2.5,
+      "parvclass": 2.55,
+      "subterclass": 2.6,
+      "megacohort": 2.62,
+      "supercohort": 2.66,
+      "cohort": 2.7,
+      "subcohort": 2.75,
+      "infracohort": 2.8,
+      "magnorder": 2.85,
+      "grandorder": 2.88,
+      "mirorder": 2.9,
+      "superorder": 2.95,
+      "order": 3.0,
+      "suborder": 3.3,
+      "infraorder": 3.5,
+      "parvorder": 3.6,
+      "nanorder": 3.7,
+      "hyporder": 3.75,
+      "superfamily": 3.9,
+      "epifamily": 3.95,
+      "family": 4.0,
+      "subfamily": 4.3,
+      "supertribe": 4.45,
+      "tribe": 4.5,
+      "subtribe": 4.6,
+      "genus": 5.0,
+      "subgenus": 5.3,
+      "species group": 5.7,
+      "species subgroup": 5.75,
+      "species": 6.0,
+      "subspecies": 6.0,
+      "variety": 6.0,
+      "form": 6.0
+    },
+    "top": 6.0
+  },
+  "bulk_unlock": 0.5,
+  "info_source": "Wikipedia",
+  "sizes": {
+    "min": 500,
+    "default": 2000,
+    "stops": [
+      500,
+      1000,
+      2000,
+      5000,
+      10000,
+      20000
+    ]
+  },
+  "release": "animals-full-2026-10-17",
+  "sources": [
+    {
+      "name": "Wikidata",
+      "url": "https://www.wikidata.org",
+      "licence": "CC0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "note": "The species, chosen by how many Wikipedias cover them, their names and their parent taxa"
+    },
+    {
+      "name": "Catalogue of Life",
+      "url": "https://www.catalogueoflife.org",
+      "licence": "CC BY 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+      "note": "A second opinion on synonyms: a species is merged into another only when Wikidata and the Catalogue agree"
+    },
+    {
+      "name": "Wikipedia",
+      "url": "https://en.wikipedia.org",
+      "licence": "CC BY-SA 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "note": "Popup text; images are linked from Wikimedia Commons and carry their own licences"
+    }
+  ],
+  "checks": {
+    "closer": [
+      {
+        "to": "Homo sapiens",
+        "order": [
+          "Pan troglodytes",
+          "Panthera leo",
+          "Gallus gallus",
+          "Salmo salar",
+          "Asterias rubens",
+          "Vespula vulgaris",
+          "Acropora cervicornis",
+          "Desmacella annexa"
+        ]
+      },
+      {
+        "to": "Apis mellifera",
+        "order": [
+          "Bombus terrestris",
+          "Vespula vulgaris",
+          "Danaus plexippus",
+          "Homarus gammarus",
+          "Octopus vulgaris",
+          "Asterias rubens",
+          "Aurelia aurita"
+        ]
+      },
+      {
+        "to": "Desmodus rotundus",
+        "order": [
+          "Canis lupus",
+          "Homo sapiens",
+          "Sarcophilus harrisii",
+          "Ornithorhynchus anatinus",
+          "Crocodylus niloticus",
+          "Rana temporaria"
+        ]
+      },
+      {
+        "to": "Panthera leo",
+        "order": [
+          "Panthera tigris",
+          "Canis lupus",
+          "Homo sapiens",
+          "Carcharodon carcharias",
+          "Lumbricus terrestris"
+        ]
+      },
+      {
+        "to": "Passer domesticus",
+        "order": [
+          "Corvus corax",
+          "Columba livia",
+          "Struthio camelus",
+          "Crocodylus niloticus",
+          "Homo sapiens",
+          "Salmo salar"
+        ]
+      },
+      {
+        "to": "Salmo salar",
+        "order": [
+          "Oncorhynchus mykiss",
+          "Esox lucius",
+          "Gadus morhua",
+          "Latimeria chalumnae",
+          "Carcharodon carcharias",
+          "Petromyzon marinus"
+        ]
+      }
+    ]
+  }
+}

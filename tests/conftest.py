@@ -25,6 +25,15 @@ def _fresh_caches():
     lineup.clear_cache()
 
 
+@pytest.fixture(autouse=True)
+def _animals_full_work_dir(tmp_path, monkeypatch):
+    """datagen/animals_full keeps its scrape and staging trees in a work
+    directory under datagen/_cache/. A test must never read the developer's,
+    or it passes here and fails on a clean clone."""
+    monkeypatch.setenv("ANIMALS_FULL_DIR", str(tmp_path / "animals-full"))
+    monkeypatch.delenv("ANIMALS_FULL_DATASET", raising=False)
+
+
 def n(name, rank=None, *children, **extra) -> dict:
     """A tree node, for writing fixtures compactly."""
     out = {"name": name, **extra}

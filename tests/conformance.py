@@ -234,6 +234,16 @@ def dataset_cases(ds: dataset.Dataset, rng: random.Random) -> dict:
     }
 
 
+def shipped() -> list[str]:
+    """The datasets a clean clone has. A manifest naming a `release` is a remote
+    tree: its files are built locally and published as a GitHub Release, so a
+    builder's machine has them and CI does not, and a file that depended on
+    which machine wrote it would be stale on every other. animals-full is one,
+    and at 57,616 nodes it would also be most of the file. Cases for cutting
+    a sized tree belong on trees a clean clone can rebuild them from."""
+    return [i for i in dataset.available() if not dataset.load(i).manifest.get("release")]
+
+
 def build() -> dict:
     rng = random.Random(20261008)
     return {
@@ -249,7 +259,7 @@ def build() -> dict:
         "ladder": ladder_cases(),
         "odd": odd_cases(),
         "lineup": lineup_cases(),
-        "datasets": [dataset_cases(dataset.load(i), rng) for i in dataset.available()],
+        "datasets": [dataset_cases(dataset.load(i), rng) for i in shipped()],
     }
 
 

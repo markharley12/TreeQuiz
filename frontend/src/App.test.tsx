@@ -332,7 +332,8 @@ describe('going home', () => {
     // Maths has no round, so no resume, and its own words.
     expect(await screen.findByRole('button', { name: /today.s field/i })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /resume/i })).toBeNull()
-    fireEvent.click(screen.getByRole('radio', { name: /animals/i }))
+    // Anchored: "All animals", a tree built locally, is a radio too.
+    fireEvent.click(screen.getByRole('radio', { name: /^animals/i }))
     expect(await screen.findByRole('button', { name: /resume your round/i })).toBeTruthy()
   })
 })
