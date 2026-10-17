@@ -19,6 +19,8 @@ const fetchGameState = vi.fn()
 const datasetForSeed = vi.fn()
 const startOddSet = vi.fn()
 const fetchOddReveal = vi.fn()
+const startLineUp = vi.fn()
+const fetchLineUpLadder = vi.fn()
 
 vi.mock('./api', () => ({
   startRound: (...a: unknown[]) => startRound(...a),
@@ -26,6 +28,8 @@ vi.mock('./api', () => ({
   datasetForSeed: (...a: unknown[]) => datasetForSeed(...a),
   startOddSet: (...a: unknown[]) => startOddSet(...a),
   fetchOddReveal: (...a: unknown[]) => fetchOddReveal(...a),
+  startLineUp: (...a: unknown[]) => startLineUp(...a),
+  fetchLineUpLadder: (...a: unknown[]) => fetchLineUpLadder(...a),
 }))
 
 // The trees draw with react-d3-tree; what they draw is checked by eye. Stubbed
@@ -101,6 +105,14 @@ const ODD_SET = Array.from({ length: 10 }, (_, i) => ({
   shared: { name: 'Carnivora', label: 'Carnivora', rank: 'Order', warmth: 0.5 }, tier: i < 3 ? 0 : i < 7 ? 1 : 2,
 }))
 
+const group = (name: string, rank: string, warmth: number) => ({ name, label: name, rank, warmth })
+const LINEUP_SET = Array.from({ length: 5 }, (_, i) => ({
+  target: 'lion', choices: ['grey wolf', 'tiger', 'human', 'moon jelly'], order: ['tiger', 'grey wolf', 'human', 'moon jelly'],
+  meets: [group('Panthera', 'Genus', 0.8), group('Carnivora', 'Order', 0.5), group('Mammalia', 'Class', 0.3), group('Animalia', 'Kingdom', 0)],
+  tier: [0, 0, 1, 1, 2][i],
+}))
+const RIGHT = ['tiger', 'grey wolf', 'human', 'moon jelly']
+
 async function renderApp() {
   const { default: App } = await import('./App')
   return render(<App />)
@@ -116,6 +128,8 @@ beforeEach(() => {
   datasetForSeed.mockResolvedValue(null)
   startOddSet.mockImplementation(async (_: string, opts: { seed?: string }) => ({ seed: opts.seed ?? 'RZVM-0DD5E7', puzzles: ODD_SET }))
   fetchOddReveal.mockReturnValue(new Promise(() => {}))
+  startLineUp.mockImplementation(async (_: string, opts: { seed?: string }) => ({ seed: opts.seed ?? 'RZVM-L1NEUP', puzzles: LINEUP_SET }))
+  fetchLineUpLadder.mockReturnValue(new Promise(() => {}))
   vi.resetModules()
 })
 
@@ -673,5 +687,85 @@ describe('odd one out', () => {
     await renderApp()
     expect(await screen.findByText(/different dataset/i)).toBeTruthy()
     expect(screen.getByRole('button', { name: /deal a new set/i })).toBeTruthy()
+  })
+})
+
+describe('line-up', () => {
+  const arriveAt = (search: string) => window.history.replaceState(null, '', `/${search}`)
+  afterEach(() => arriveAt(''))
+  const place = (name: string) => fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${name}`, 'i') }))
+
+  it("deals today's set from the front page, places four and scores them", async () => {
+    await renderApp()
+    fireEvent.click(screen.getByRole('button', { name: /^line-up$/i }))
+    expect(await screen.findByText('RZVM-L1NEUP')).toBeTruthy()
+    expect(startLineUp).toHaveBeenCalledWith(DATASET, expect.objectContaining({ daily: true }))
+    place('tiger')
+    place('grey wolf')
+    place('human')
+    // The last has one place left, and takes it.
+    expect(screen.getByRole('button', { name: /moon jelly, placed 4th/i })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /^check$/i }))
+    expect(await screen.findByText('All four in place.')).toBeTruthy()
+    expect(JSON.parse(localStorage.getItem('treequiz:lineup:animals')!)).toEqual({ seed: 'RZVM-L1NEUP', answers: [RIGHT], day: today() })
+  })
+
+  it('takes a placed name back, with every name placed after it', async () => {
+    await renderApp()
+    fireEvent.click(screen.getByRole('button', { name: /^line-up$/i }))
+    await screen.findByText('RZVM-L1NEUP')
+    place('tiger')
+    place('grey wolf')
+    place('tiger')
+    expect(screen.queryByRole('button', { name: /placed/i })).toBeNull()
+    expect((screen.getByRole('button', { name: /^check$/i }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('says how many were in place, and where a misplaced one belonged', async () => {
+    await renderApp()
+    fireEvent.click(screen.getByRole('button', { name: /^line-up$/i }))
+    await screen.findByText('RZVM-L1NEUP')
+    place('grey wolf')
+    place('tiger')
+    place('human')
+    fireEvent.click(screen.getByRole('button', { name: /^check$/i }))
+    expect(await screen.findByText('2 of 4 in place.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^grey wolf/i }).textContent).toContain('2nd')
+  })
+
+  it("opens a link's set, and takes the link out of the address", async () => {
+    arriveAt('?d=animals&lineup=RZVM-ABCDEF')
+    await renderApp()
+    expect(await screen.findByText('RZVM-ABCDEF')).toBeTruthy()
+    expect(startLineUp).toHaveBeenCalledWith(DATASET, expect.objectContaining({ seed: 'RZVM-ABCDEF' }))
+    expect(window.location.search).toBe('')
+  })
+
+  it('scores a finished set out of twenty and counts it once', async () => {
+    const wrong = ['grey wolf', 'tiger', 'human', 'moon jelly']
+    localStorage.setItem('treequiz:lineup:animals', JSON.stringify({ seed: 'RZVM-L1NEUP', answers: [RIGHT, RIGHT, RIGHT, RIGHT, wrong] }))
+    localStorage.setItem('treequiz:view:animals', 'lineup')
+    localStorage.setItem('treequiz:lineupdaily:animals', JSON.stringify({ [today()]: { seed: 'RZVM-DA1E77', answers: [], right: 5 } }))
+    await renderApp()
+    expect(await screen.findByText('18 of 20')).toBeTruthy()
+    expect(screen.getByLabelText('Your places').textContent).toBe('🟩🟩🟩🟩'.repeat(4) + '🟥🟥🟩🟩')
+    cleanup()
+    await renderApp()
+    await screen.findByText('18 of 20')
+    expect(JSON.parse(localStorage.getItem('treequiz:lineuptally:animals')!)).toMatchObject({ sets: 1, right: 18, best: 18 })
+  })
+
+  it("keeps today's set as the day's once finished, apart from odd one out's", async () => {
+    await renderApp()
+    fireEvent.click(screen.getByRole('button', { name: /^line-up$/i }))
+    await screen.findByText('RZVM-L1NEUP')
+    for (let i = 0; i < 5; i++) {
+      for (const name of RIGHT.slice(0, 3)) place(name)
+      fireEvent.click(screen.getByRole('button', { name: /^check$/i }))
+      fireEvent.click(await screen.findByRole('button', { name: i < 4 ? /^next$/i : /see your score/i }))
+    }
+    expect(await screen.findByText('20 of 20')).toBeTruthy()
+    expect(JSON.parse(localStorage.getItem('treequiz:lineupdaily:animals')!)[today()]).toMatchObject({ seed: 'RZVM-L1NEUP', right: 20 })
+    expect(localStorage.getItem('treequiz:odddaily:animals')).toBeNull()
   })
 })

@@ -12,6 +12,8 @@ import { lineage, search, stats, subtree } from './engine/explore'
 import { infoFor, type Info } from './engine/info'
 import { tagOf, fingerprint, normalise } from './engine/seed'
 import { makeSet, pickSeed, type Puzzle } from './engine/odd'
+import { makeSet as makeLineUps, pickSeed as pickLineUpSeed, type LineUp } from './engine/lineup'
+import { ladder, type Ladder } from './lineupReveal'
 import { reveal, type Reveal } from './oddReveal'
 import { leavesOf } from './engine/game'
 import { matchedAliases } from './aliasHint'
@@ -21,6 +23,8 @@ export type { ExploreNode, ExploreHit, ExploreStats, Lineage } from './engine/ex
 export type { Info } from './engine/info'
 export type { Puzzle } from './engine/odd'
 export type { Reveal } from './oddReveal'
+export type { LineUp } from './engine/lineup'
+export type { Ladder } from './lineupReveal'
 import type { TreeNode } from './engine/game'
 import type { ExploreNode, ExploreHit, ExploreStats, Lineage } from './engine/explore'
 
@@ -49,6 +53,22 @@ export async function startOddSet(dataset: string, opts: { seed?: string; daily?
   const ds = await loadDataset(dataset)
   const seed = opts.seed ? normalise(opts.seed) : pickSeed(ds, { daily: opts.daily })
   return { seed, puzzles: makeSet(ds, seed) }
+}
+
+export interface LineUpSet {
+  seed: string
+  puzzles: LineUp[]
+}
+
+/** Deal a line-up set, as `startOddSet` deals odd one out's. */
+export async function startLineUp(dataset: string, opts: { seed?: string; daily?: boolean } = {}): Promise<LineUpSet> {
+  const ds = await loadDataset(dataset)
+  const seed = opts.seed ? normalise(opts.seed) : pickLineUpSeed(ds, { daily: opts.daily })
+  return { seed, puzzles: makeLineUps(ds, seed) }
+}
+
+export async function fetchLineUpLadder(dataset: string, puzzle: LineUp): Promise<Ladder> {
+  return ladder(await loadDataset(dataset), puzzle)
 }
 
 export async function fetchOddReveal(dataset: string, puzzle: Puzzle): Promise<Reveal> {

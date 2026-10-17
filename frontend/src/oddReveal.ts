@@ -41,7 +41,9 @@ export interface Reveal {
   odd: Box
 }
 
-function box(ds: Dataset, lineage: RawNode[], from: number, at: number, style: ChainStyle): Box {
+/** The node `at` in `lineage`, skipping what lies between it and `from`.
+ *  Line-up's ladder is drawn from the same boxes. */
+export function box(ds: Dataset, lineage: RawNode[], from: number, at: number, style: ChainStyle): Box {
   const node = lineage[at]
   const skipped = lineage.slice(from, at).map(labelOf)
   const stepwise = style.chain_order === 'root_first'

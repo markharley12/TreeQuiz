@@ -20,12 +20,14 @@ export function shareBase(page: string): string {
   return url.href
 }
 
-/** A link to a round, or with `odd`, to an odd-one-out set — which a seed
+export type LinkGame = 'round' | 'odd' | 'lineup'
+
+/** A link to a round, or to an odd-one-out or line-up set — which a seed
  *  names just as well, so the parameter is what says which game. */
-export function shareLink(base: string, dataset: string, seed: string, game: 'round' | 'odd' = 'round'): string {
+export function shareLink(base: string, dataset: string, seed: string, game: LinkGame = 'round'): string {
   const url = new URL(base)
   url.searchParams.set('d', dataset)
-  url.searchParams.set(game === 'odd' ? 'odd' : 'seed', seed)
+  url.searchParams.set(game === 'round' ? 'seed' : game, seed)
   return url.href
 }
 
@@ -34,13 +36,18 @@ export interface Link {
   seed: string | null
   /** An odd-one-out set's seed. */
   odd: string | null
+  /** A line-up set's seed. */
+  lineup: string | null
 }
 
 /** What a link carries. Validity is the engine's business. */
 export function readLink(search: string): Link {
   const params = new URLSearchParams(search)
   const clean = (v: string | null) => (v?.trim() ? v.trim() : null)
-  return { dataset: clean(params.get('d')), seed: clean(params.get('seed')), odd: clean(params.get('odd')) }
+  return {
+    dataset: clean(params.get('d')), seed: clean(params.get('seed')),
+    odd: clean(params.get('odd')), lineup: clean(params.get('lineup')),
+  }
 }
 
 /** The address with a link's parameters taken out, so a reload resumes the
@@ -50,5 +57,6 @@ export function withoutLink(href: string): string {
   url.searchParams.delete('d')
   url.searchParams.delete('seed')
   url.searchParams.delete('odd')
+  url.searchParams.delete('lineup')
   return url.href
 }
