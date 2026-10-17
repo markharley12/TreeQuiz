@@ -26,9 +26,10 @@
  * as the page — which is what the app did before there were downloads.
  *
  * The same code serves the Android app (phase 5), from https://localhost:
- * there `VITE_DATA_BASE` names the website, whose catalogue and files it
- * fetches cross-origin (GitHub Pages answers `Access-Control-Allow-Origin: *`),
- * while small trees are bundled into the app and read from it.
+ * there every tree is bundled into the app and read from it (vite.config.ts),
+ * and `VITE_DATA_BASE` names the website, whose catalogue and files it would
+ * fetch cross-origin (GitHub Pages answers `Access-Control-Allow-Origin: *`)
+ * for a tree the app did not bundle — none today.
  */
 import baked from 'virtual:treequiz-catalogue'
 import { ASK_BYTES, downloadSet, sizeOf, type Catalogue, type CatalogueTree } from './catalogue'

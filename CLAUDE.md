@@ -341,9 +341,12 @@ every deploy; a 48MB tree cannot live like that. Now:
   `treequiz:<key>:<id>` key and per-size `…:<id>@n` / `…:<id>:n`), Download,
   Update and Finish, and the browser's storage estimate.
 - **The app (phase 5)** sets `VITE_DATA_BASE` to the website. The build then
-  bundles trees under `ASK_BYTES` (`bundled`, read from the app, never
-  deleted) and leaves big ones out of the baked catalogue; the website's
-  `datasets.json` names them, fetched cross-origin (Pages sends ACAO `*`).
+  bundles **every** tree (`bundled`, read from the app, never deleted),
+  animals included, and fails if a remote tree's files are missing. It
+  bundled only trees under `ASK_BYTES` at first, leaving animals to the
+  website; the owner wanted it in the APK (14.5MB with it, 6.5MB without).
+  The code for a tree the app does not bundle, learned of from the
+  website's `datasets.json` cross-origin (Pages sends ACAO `*`), stays.
 - **Remote trees**: a manifest with `"release": "<tag>"` and no `tree.json`.
   Listed (as "needs a connection" until a catalogue has its files); the Pages
   workflow runs `gh release download <tag>` into `datasets/<id>/` after the

@@ -18,14 +18,17 @@ and keeps the APK as an artifact.
 - **ID `io.github.markharley12.treequiz`, name TreeQuiz**, one flavour.
   Capacitor pinned to TaxoQuiz's versions (core/android/cli 8.5.2, app
   8.1.1), the newer 8.5.3 being ten days old when added.
-- **What is inside**: the eight small trees, bundled (6.5MB APK). Animals
-  is left out and downloads from the website like anywhere else; the app
-  learns of it from the site's `datasets.json`. So **the app's Animals needs
-  the website to have the same kind of tree**: a live catalogue entry that is
-  sized where the build's is not, or the reverse, is ignored
-  (`sameKind` in `downloads.ts`), and the card says "Needs a connection".
-  Found on the first app build, against a site still serving the 530 as
-  `animals`: without the check the app took them for its Animals.
+- **What is inside: every tree**, animals' 45MB included (14.5MB release
+  APK, as TaxoQuiz's Full app was 15MB), so the app plays all of them
+  offline from install and never downloads one. An app build without
+  animals' files fails rather than shipping without it: on a clean clone,
+  fetch the release first (`gh release download <tag> --dir
+  datasets/animals`, the tag in its manifest), as CI's APK job does.
+  The first APK left animals to the website (6.5MB); the owner wanted it in.
+  That build also found that a live catalogue entry of another kind (sized
+  where the build's is not, or the reverse) must be ignored (`sameKind` in
+  `downloads.ts`): against a site still serving the 530 as `animals`, the
+  app took them for its Animals.
 - **No service worker in the app** (`main.tsx`): it is served from its own
   package, so offline already.
 - **The back button** (`backButton.ts`, TaxoQuiz's): closes the newest
@@ -131,6 +134,7 @@ app, and the big tree comes from the Pages site.
 - Release signing with a new key or TaxoQuiz's: the owner's call. Reusing it
   does not let TreeQuiz update TaxoQuiz's installs (the ID differs either way).
 - The small trees bundled (all nine are ~1.5MB gzipped), so it works offline
+  (done, and animals too: see the first section)
   from install; a bundled tree can be hidden, not deleted.
 - CI's APK job back, as TaxoQuiz had it: it caught a broken Android lint that
   nothing else ran.

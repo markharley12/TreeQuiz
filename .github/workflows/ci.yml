@@ -1,6 +1,7 @@
 # Both suites on every push and pull request, which never touch the network:
 # the datasets are committed, and the builders' tests use no downloads. The
-# APK job below does, for Gradle and its Android dependencies.
+# APK job below does, for Gradle and its Android dependencies, and for the
+# trees kept in releases, which the app bundles.
 name: CI
 
 on:
@@ -54,6 +55,9 @@ jobs:
   # one will not install over another: uninstall the old app first.
   android:
     runs-on: ubuntu-latest
+    # Reading releases: the app bundles every tree, animals' included.
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: frontend
@@ -74,6 +78,19 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm install -g npm@11
       - run: npm ci
+      # The app bundles every tree, so the trees kept in releases are fetched
+      # first, as the Pages workflow does; the app build fails without them.
+      - name: Fetch trees kept in releases
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for manifest in datasets/*/manifest.json; do
+            dir=$(dirname "$manifest")
+            tag=$(jq -r '.release // empty' "$manifest")
+            if [ -z "$tag" ] || [ -f "$dir/tree.json" ]; then continue; fi
+            gh release download "$tag" --repo "${{ github.repository }}" --dir "$dir" --pattern '*.json' --skip-existing
+          done
       # The runner image ships an Android SDK and sets $ANDROID_HOME, which
       # Gradle reads in place of the gitignored local.properties.
       - run: npm run android:apk

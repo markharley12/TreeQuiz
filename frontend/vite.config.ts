@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 import { loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
-import { ASK_BYTES, downloadSet, sizeOf, type Catalogue, type CatalogueTree } from './src/engine/catalogue.ts'
+import type { Catalogue, CatalogueTree } from './src/engine/catalogue.ts'
 import { leaves } from './src/engine/tree.ts'
 
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url))
@@ -24,8 +24,11 @@ const CATALOGUE_ID = 'virtual:treequiz-catalogue'
  * tree, whose files the Pages workflow fetches from a release: without them
  * the build still works, and lists the tree with no files.
  *
- * An app build (`dataBase` set, see VITE_DATA_BASE) bundles the trees small
- * enough to download without asking and leaves the rest to the website.
+ * An app build (`dataBase` set, see VITE_DATA_BASE) bundles every tree, so
+ * the app plays all of them offline from install, animals' 45MB included (the
+ * owner's call, Oct 2026: the first APK left it to the website). A remote
+ * tree whose files are missing therefore fails an app build, rather than
+ * shipping an app without it: fetch its release first, as CI does.
  */
 function scanDatasets(build: boolean, dataBase: string | undefined, test: boolean) {
   const trees: CatalogueTree[] = []
@@ -41,6 +44,7 @@ function scanDatasets(build: boolean, dataBase: string | undefined, test: boolea
     const manifest = JSON.parse(manifestText)
     const names = readdirSync(`${root}/${id}`).filter((n) => n.endsWith('.json') && n !== 'manifest.json').sort()
     if (!names.includes('tree.json')) {
+      if (dataBase) throw new Error(`${id} has no tree.json, and the app bundles every tree: fetch its release (gh release download ${manifest.release} --dir datasets/${id})`)
       trees.push({ id, manifest, version: null, files: null })
       continue
     }
@@ -61,14 +65,8 @@ function scanDatasets(build: boolean, dataBase: string | undefined, test: boolea
     }
     const tree = JSON.parse(sources.get(files['tree.json'].url)!.toString('utf8'))
     const entry: CatalogueTree = { id, manifest, version: version.digest('hex').slice(0, 12), files, leaves: leaves(tree).length }
-    if (dataBase) {
-      // The app: small trees ride inside it, big ones come from the website.
-      if (sizeOf(entry, downloadSet(entry)).bytes > ASK_BYTES) {
-        trees.push({ ...entry, files: null })
-        continue
-      }
-      entry.bundled = true
-    }
+    // The app: every tree rides inside it.
+    if (dataBase) entry.bundled = true
     trees.push(entry)
     for (const [url, source] of sources) emit.set(url, source)
   }
