@@ -10,13 +10,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const files = import.meta.glob<string>('../../datasets/*/{tree,info}.json', { eager: true, query: '?raw', import: 'default' })
 
-/** Serve each dataset file at the URL Vite gave it, by its name. */
+/** Serve each dataset file at the URL the catalogue gave it, by its name. */
 function stubFetch(fail: (url: string) => boolean = () => false) {
   const mock = vi.fn(async (url: string) => {
-    const [, id, file] = url.match(/datasets\/([^/]+)\/(tree|info)\.json/) ?? []
+    const [, id, file] = url.match(/data\/([^/]+)\/(tree|info)\.json/) ?? []
     const text = id ? files[`../../datasets/${id}/${file}.json`] : undefined
-    if (!text || fail(url)) return { ok: false, status: 404, json: async () => null }
-    return { ok: true, status: 200, json: async () => JSON.parse(text) }
+    if (!text || fail(url)) return new Response(null, { status: 404 })
+    return new Response(text)
   })
   vi.stubGlobal('fetch', mock)
   return mock

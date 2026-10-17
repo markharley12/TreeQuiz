@@ -9,6 +9,8 @@ import GuessInput from './components/GuessInput'
 import GuessList from './components/GuessList'
 import SettingsMenu from './components/SettingsMenu'
 import DatasetPicker from './components/DatasetPicker'
+import DownloadGate from './components/DownloadGate'
+import Progress from './components/DownloadProgress'
 import OddOneOut from './components/OddOneOut'
 import LineUp from './components/LineUp'
 import StatsDialog from './components/StatsDialog'
@@ -24,11 +26,16 @@ import { readLink, shareBase, shareLink, withoutLink } from './shareLink'
 import { useSharer } from './sharer'
 import { guessWarmths, readDailies, recordDaily, shareText } from './results'
 import { bulkUnlock, noun, nounPlural, shortTitle } from './words'
+import { useDownloads, useTree } from './useDownloads'
+import { download } from './engine/downloads'
+import { formatBytes } from './engine/catalogue'
 
 // The two trees are drawn with react-d3-tree and d3, a third of the bundle,
 // which the front page and odd one out never need: loaded when first drawn.
 const GameTree = lazy(() => import('./components/GameTree'))
 const ExploreTree = lazy(() => import('./components/ExploreTree'))
+// Opened rarely, and most of its parts are its own.
+const ManageTrees = lazy(() => import('./components/ManageTrees'))
 const treeFallback = <Box sx={{ display: 'flex', justifyContent: 'center', mt: 6 }}><CircularProgress /></Box>
 
 type Mode = 'daily' | 'practice' | 'explore' | 'odd' | 'lineup'
@@ -156,6 +163,10 @@ export default function App() {
     return { landing: false, seed: link.seed, odd: link.odd, lineup: link.lineup }
   })
   const manifest = entryFor(dataset)?.manifest
+  const { ready, trees } = useDownloads()
+  const [managing, setManaging] = useState(false)
+  // Bumped when the tree's saved round is forgotten, to remount it empty.
+  const [forgotten, setForgotten] = useState(0)
 
   useEffect(() => {
     if (manifest) document.title = `${shortTitle(manifest)} — TreeQuiz`
@@ -167,9 +178,37 @@ export default function App() {
   }
 
   if (!manifest) return <Alert severity="error" sx={{ m: 3 }}>No datasets in this build.</Alert>
+  const manage = managing && (
+    <Suspense fallback={null}>
+      <ManageTrees
+        open
+        onClose={() => setManaging(false)}
+        onForgot={(id) => {
+          if (id !== dataset) return
+          setNav({ landing: true, seed: null })
+          setForgotten((n) => n + 1)
+        }}
+      />
+    </Suspense>
+  )
+  // A tree that is not here and will not fetch itself — a big one, or one
+  // only the website has — gets a page that says so, until it is down. Its
+  // round, and a link's seed, wait behind it.
+  const tree = trees.get(dataset)
+  if (tree && !tree.copy && (!tree.offer || tree.offer.ask)) return (
+    <>
+      <DownloadGate dataset={dataset} ready={ready} onPick={(id) => switchTo(id, { landing: true, seed: null })} onManage={() => setManaging(true)} />
+      {manage}
+    </>
+  )
   // Keyed on the dataset, so a switch mounts a fresh round that reads its own
   // saved state, rather than one round's state leaking into another tree.
-  return <Round key={dataset} dataset={dataset} manifest={manifest} nav={nav} onSwitch={switchTo} />
+  return (
+    <>
+      <Round key={`${dataset}#${forgotten}`} dataset={dataset} manifest={manifest} nav={nav} onSwitch={switchTo} onManage={() => setManaging(true)} />
+      {manage}
+    </>
+  )
 }
 
 interface RoundProps {
@@ -177,9 +216,10 @@ interface RoundProps {
   manifest: Manifest
   nav: Nav
   onSwitch: (id: string, next: Nav) => void
+  onManage: () => void
 }
 
-function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
+function Round({ dataset, manifest, nav, onSwitch, onManage }: RoundProps) {
   const [boot] = useState(() => readBoot(dataset, nav.seed, nav.landing, nav.odd ?? null, nav.lineup ?? null))
   const saved = boot.saved
   const [mode, setMode] = useState<Mode | null>(boot.mode)
@@ -398,6 +438,10 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
         </Typography>
 
         <DatasetPicker selected={dataset} onPick={(id) => id !== dataset && onSwitch(id, { landing: true, seed: null })} />
+        <Box sx={{ textAlign: 'right', mt: 0.75 }}>
+          <Link component="button" variant="body2" onClick={onManage}>Manage trees</Link>
+        </Box>
+        <UpdateNotice dataset={dataset} title={shortTitle(manifest)} />
 
         <Typography sx={{ textAlign: 'center', mt: 3, mb: 1.5, fontFamily: FONT_DISPLAY, fontSize: '1.15rem' }}>
           {manifest.prompt}
@@ -636,6 +680,29 @@ function Round({ dataset, manifest, nav, onSwitch }: RoundProps) {
         </DialogActions>
       </Dialog>
     </Box>
+  )
+}
+
+/** A big tree with a newer version out. Small ones update themselves; a big
+ *  one waits to be asked, and the copy here plays until then — a round in
+ *  progress keeps the tree its seed was dealt on. */
+function UpdateNotice({ dataset, title }: { dataset: string; title: string }) {
+  const t = useTree(dataset)
+  if (!t?.big || !t.update || !t.offer) return null
+  return (
+    <Alert
+      severity="info"
+      sx={{ mt: 2 }}
+      action={!t.progress && (
+        <Button color="inherit" size="small" onClick={() => void download(dataset).catch(() => {})}>
+          Update ({formatBytes(t.offer.gzip)})
+        </Button>
+      )}
+    >
+      A newer {title} is out. The copy on this device plays until you update, and a round in progress may not survive the change.
+      {t.progress && <Progress p={t.progress} />}
+      {t.error && <Box sx={{ color: 'error.main' }}>{t.error}</Box>}
+    </Alert>
   )
 }
 

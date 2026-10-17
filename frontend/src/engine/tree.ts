@@ -47,6 +47,9 @@ export interface Manifest {
   sources?: Source[]
   /** Where the dataset sits in the picker; lower first. */
   order?: number
+  /** The GitHub release whose assets are this tree's files, for a tree too
+   *  big for git: the Pages workflow downloads them before building. */
+  release?: string
   /** Its names are phrases, so boxes are drawn wider. */
   long_labels?: boolean
   /** Its node names are opaque keys (Wikidata or Glottolog IDs), so they are

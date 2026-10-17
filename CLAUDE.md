@@ -16,8 +16,8 @@ Nine datasets — **maths** (MSC2020, 517 fields), **languages** (Glottolog,
 **chess** (Lichess, 446 openings), **physics** (PhySH, 487 topics),
 **chemistry** (ChEBI, 465 chemicals), **cities** (Wikidata and Natural
 Earth, 622), **plants** (Wikidata's taxonomy, 469). Three games: the
-guessing round, odd one out and line-up. Python suite 220 tests, frontend
-524, both green;
+guessing round, odd one out and line-up. Trees are downloads the player
+chooses and can delete. Python suite 220 tests, frontend 538, both green;
 CI and Pages workflows written but **the repo has not been pushed** and has no
 GitHub remote yet. No Android build (TaxoQuiz's Capacitor setup was left out).
 
@@ -33,9 +33,10 @@ cd frontend && npm test && npm run lint && npx tsc --noEmit
 ## What a dataset is
 
 `datasets/<id>/{manifest,tree,info}.json`; see `src/treequiz/dataset.py` for
-every field. The frontend finds them with `import.meta.glob` in
-`frontend/src/engine/datasets.ts`, so a new directory is a new tree in the app
-with no code change. Nothing in `src/` or `frontend/src/` may name a dataset —
+every field. The build finds them (`catalogue()` in `frontend/vite.config.ts`;
+see "Trees on the device" below), so a new directory is a new tree in the app
+with no code change. Every `*.json` beside the manifest is one of the tree's
+files, so `info-<n>.json` tiers need nothing either. Nothing in `src/` or `frontend/src/` may name a dataset —
 words come from the manifest (`frontend/src/words.ts`).
 
 Manifests are hand-written and builders never touch them. `checks.closer` is the
@@ -193,6 +194,86 @@ focused, skipping the answer.
   daily button opens the stats instead, and a daily in progress *resumes*
   (it used to restart from nothing). Streaks count calendar days in UTC, as
   the daily's seed does, and survive until today is over.
+
+## Trees on the device — downloads (Oct 2026)
+
+Phase 4 of `docs/taxoquiz-merge-plan.md`. Every tree used to be a lazy file of
+the build, cached in the service worker's per-build cache and so deleted by
+every deploy; a 48MB tree cannot live like that. Now:
+
+- **The catalogue.** `catalogue()` in `vite.config.ts` scans `datasets/` and
+  writes it twice: into the bundle as `virtual:treequiz-catalogue` (the front
+  page lists every tree with no network) and beside the site as
+  `datasets.json`, which a running page fetches (`refresh()`, at load and when
+  Manage trees opens) to learn of newer versions. Each entry: manifest,
+  `version` (hash of manifest and files), and per file its URL, bytes and gzip
+  bytes. Files are emitted as `data/<id>/<stem>-<hash>.json` — named by
+  content, so a URL never means two things and is the cache key for good. The
+  dev server serves `data/<id>/<name>` unhashed through the same plugin.
+  Shapes and the pure helpers (`downloadSet`, `sizeOf`, `ASK_BYTES`) are in
+  `engine/catalogue.ts`, which vite.config.ts imports too.
+- **The data cache.** `engine/downloads.ts` keeps files in Cache Storage
+  `treequiz-data`, plus a **copy** record per tree (`treequiz-copy/<id>`:
+  version, manifest, file URLs, which are held) in the same cache, so the two
+  are evicted together. `sw.js` never touches it — its clean-up deletes only
+  its own `treequiz-<scope>-` names — and no longer precaches or answers for
+  `data/` or `datasets.json` (the build throws if the catalogue is missing).
+  Where Cache Storage is refused (insecure origin, some private windows,
+  jsdom) the same code runs over a Map and downloads last the page.
+- **One door**: `readJson(id, name)`, which `datasets.ts` calls for
+  `tree.json` and `info.json`. Tier loading should come through it too
+  (`filesOf(id)` lists a tree's files).
+- **Small trees** (download set ≤ `ASK_BYTES`, 5MB on the device) download
+  on first read, the read file first: the copy is written as soon as it is in,
+  so play starts, and the rest follows. A newer version is taken in the
+  background the next time one is opened; the page goes on with its copy.
+- **Big trees** ask: `App` shows `DownloadGate` (the front page with a
+  download panel saying both sizes) for a tree not on the device that is big
+  or that no catalogue has files for. A link to such a tree waits behind it
+  and plays once it is down. An update waits for the player
+  (`UpdateNotice` on the front page, or Manage trees) and swaps the copy only
+  when every file is in; files at an unchanged URL are kept, so an update
+  that changed the manifest alone fetches nothing. Cancel keeps nothing of a
+  first download. `navigator.storage.persist()` is asked after a big one.
+- **What a download fetches**: tree.json, info.json, and for a sized tree the
+  `info-<n>.json` tiers its `sizes.default` needs (`tiersUpTo`'s rule); other
+  tiers on first use. Sizes on the cards are bytes on the device; the gate and
+  buttons say the gzip bytes to download.
+- **Manage trees** (`components/ManageTrees.tsx`, lazy) lists every tree with
+  what it takes, Delete (offering `forgetProgress`, which clears every
+  `treequiz:<key>:<id>` key and per-size `…:<id>@n` / `…:<id>:n`), Download,
+  Update and Finish, and the browser's storage estimate.
+- **The app (phase 5)** sets `VITE_DATA_BASE` to the website. The build then
+  bundles trees under `ASK_BYTES` (`bundled`, read from the app, never
+  deleted) and leaves big ones out of the baked catalogue; the website's
+  `datasets.json` names them, fetched cross-origin (Pages sends ACAO `*`).
+- **Remote trees**: a manifest with `"release": "<tag>"` and no `tree.json`.
+  Listed (as "needs a connection" until a catalogue has its files); the Pages
+  workflow runs `gh release download <tag>` into `datasets/<id>/` after the
+  tests and before the build, failing if `tree.json` does not arrive.
+  `datagen/publish_release.py` (phase 2) makes the release.
+
+**Verified** in a real Chrome on the build served under `/TreeQuiz/` from a
+static server, with a local 48MB animals-full (uncommitted): maths downloaded
+itself on Practice into `treequiz-data`, with nothing of the trees in the
+precache; animals-full showed the gate ("10 MB to download, 48 MB on this
+device"), played as soon as its tree was in, and finished its text behind;
+with the server killed it dealt a round, took a guess and opened a popup. Then
+a redeploy (v2: maths' manifest and animals-full's tree changed): the old
+page, still on v1's code under the waiting worker, learned of both from
+`datasets.json` and offered "Update (835 KB)"; after the tab closed, v2's
+worker took over, deleted v1's build cache, and `treequiz-data` was untouched
+— the saved round resumed on the old copy. The update fetched only the
+changed tree file and deleted the old one; maths took its manifest-only
+update in the background, fetching nothing; Delete removed the files, the
+copy and the tree's saved keys, and the gate came back. Chrome turned
+`persist()` down on an origin with no engagement, as it does; not seen granted.
+
+**Not verified**: the Pages workflow's release step (no release exists yet),
+the app build (`VITE_DATA_BASE`) beyond the unit test, and two tabs at once
+(a `BroadcastChannel` re-reads copies in the other tab). The first test in
+`App.test.tsx` and `GuessInput.test.tsx` can pass 5s on a loaded machine —
+the baseline's took the same 3.7s under the same load.
 
 ## Data notes
 

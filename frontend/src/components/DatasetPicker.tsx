@@ -3,6 +3,9 @@ import { DATASETS } from '../engine/datasets'
 import { utcToday } from '../engine/seed'
 import { readDailies, score } from '../results'
 import { shortTitle } from '../words'
+import { formatBytes } from '../engine/catalogue'
+import type { TreeState } from '../engine/downloads'
+import { useDownloads } from '../useDownloads'
 import { ACCENT, CARD, FONT_DISPLAY, INK_MUTED, LINE } from '../theme'
 
 interface Props {
@@ -10,10 +13,22 @@ interface Props {
   onPick: (id: string) => void
 }
 
+/** Where a tree stands on this device, for its card: every tree is listed,
+ *  downloaded or not, with what it takes. */
+function deviceNote(t: TreeState | undefined): string {
+  if (!t || t.bundled) return ''
+  if (t.progress) return `Downloading… ${t.progress.total ? Math.floor((100 * t.progress.done) / t.progress.total) : 0}%`
+  if (t.copy && t.update && t.big) return `On this device · update ${formatBytes(t.offer!.gzip)}`
+  if (t.copy) return `On this device · ${formatBytes(t.copy.bytes)}`
+  if (t.offer) return `${t.big ? 'Download first' : 'Downloads on opening'} · ${formatBytes(t.offer.bytes)}`
+  return 'Needs a connection'
+}
+
 /** The trees there are to play, as cards: which one is a choice the front page
  *  should show at a glance rather than bury in the settings menu. */
 export default function DatasetPicker({ selected, onPick }: Props) {
   const today = utcToday()
+  const { ready, trees } = useDownloads()
   // At most four across, and rows as even as that allows: five trees went four
   // and a stray one, and read better as three and two.
   const rows = Math.ceil(DATASETS.length / 4)
@@ -61,6 +76,11 @@ export default function DatasetPicker({ selected, onPick }: Props) {
             <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5, fontSize: '0.8rem', lineHeight: 1.35 }}>
               {manifest.blurb}
             </Typography>
+            {ready && deviceNote(trees.get(id)) && (
+              <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', mt: 0.5, fontSize: '0.7rem', opacity: 0.85 }}>
+                {deviceNote(trees.get(id))}
+              </Typography>
+            )}
           </ButtonBase>
         )
       })}

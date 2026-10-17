@@ -16,11 +16,17 @@ import { theme } from './theme'
 import { setSetting } from './settings'
 import { readLink } from './shareLink'
 import { entryFor } from './engine/datasets'
+import { refresh } from './engine/downloads'
 
 // A shared link names its tree. Switched to before the first render, so the
 // round mounts on the right dataset and is the one to read the link's seed.
 const link = readLink(window.location.search)
 if (link.dataset && entryFor(link.dataset)) setSetting('dataset', link.dataset)
+
+// Ask the website what versions of the trees it has: news of an update, and in
+// the app the only word of the trees it does not bundle. After the first
+// render, which this build's own catalogue is enough for.
+window.addEventListener('load', () => void refresh())
 
 // Offline support for the website, which is what makes "Add to Home Screen"
 // behave like an app; see pwa/sw.js. Never in development, where a cached build

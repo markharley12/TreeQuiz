@@ -1,11 +1,109 @@
 import { createHash } from 'node:crypto'
-import { readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { gzipSync } from 'node:zlib'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
-import type { Plugin } from 'vite'
+import { loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+import { ASK_BYTES, downloadSet, sizeOf, type Catalogue, type CatalogueTree } from './src/engine/catalogue.ts'
 
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url))
+const sha = (data: string | Buffer) => createHash('sha256').update(data).digest('hex')
+
+const CATALOGUE_ID = 'virtual:treequiz-catalogue'
+
+/**
+ * Every tree under the repo's `datasets/`, and the files to serve for each.
+ *
+ * Every `*.json` beside a manifest is one of the tree's files — `tree.json`,
+ * `info.json`, `info-<n>.json` — so a new kind of file needs nothing here. In a
+ * build each is named by its content (`data/maths/tree-3f2a….json`), which is
+ * what lets a download be kept by URL for good; the dev server serves them
+ * under their own names. A manifest with no `tree.json` beside it is a remote
+ * tree, whose files the Pages workflow fetches from a release: without them
+ * the build still works, and lists the tree with no files.
+ *
+ * An app build (`dataBase` set, see VITE_DATA_BASE) bundles the trees small
+ * enough to download without asking and leaves the rest to the website.
+ */
+function scanDatasets(build: boolean, dataBase: string | undefined) {
+  const root = here('../datasets')
+  const trees: CatalogueTree[] = []
+  const emit = new Map<string, Buffer>()
+  for (const id of readdirSync(root).sort()) {
+    const manifestPath = `${root}/${id}/manifest.json`
+    if (!existsSync(manifestPath)) continue
+    const manifestText = readFileSync(manifestPath, 'utf8')
+    const manifest = JSON.parse(manifestText)
+    const names = readdirSync(`${root}/${id}`).filter((n) => n.endsWith('.json') && n !== 'manifest.json').sort()
+    if (!names.includes('tree.json')) {
+      trees.push({ id, manifest, version: null, files: null })
+      continue
+    }
+    const files: CatalogueTree['files'] = {}
+    const sources = new Map<string, Buffer>()
+    const version = createHash('sha256').update(manifestText)
+    for (const name of names) {
+      const source = readFileSync(`${root}/${id}/${name}`)
+      const hash = sha(source).slice(0, 12)
+      version.update(name).update(hash)
+      const url = build ? `data/${id}/${name.replace(/\.json$/, '')}-${hash}.json` : `data/${id}/${name}`
+      files[name] = { url, bytes: source.length, gzip: gzipSync(source).length }
+      sources.set(url, source)
+    }
+    const entry: CatalogueTree = { id, manifest, version: version.digest('hex').slice(0, 12), files }
+    if (dataBase) {
+      // The app: small trees ride inside it, big ones come from the website.
+      if (sizeOf(entry, downloadSet(entry)).bytes > ASK_BYTES) {
+        trees.push({ ...entry, files: null })
+        continue
+      }
+      entry.bundled = true
+    }
+    trees.push(entry)
+    for (const [url, source] of sources) emit.set(url, source)
+  }
+  return { catalogue: { trees } satisfies Catalogue, emit }
+}
+
+/** The catalogue as a module (`virtual:treequiz-catalogue`), the dev server's
+ *  `data/` and `datasets.json`, and in a build those files emitted. See
+ *  src/engine/catalogue.ts for what the catalogue is for. */
+function catalogue(): Plugin {
+  let scanned: ReturnType<typeof scanDatasets> | undefined
+  let build = false
+  let dataBase: string | undefined
+  const scan = () => (scanned ??= scanDatasets(build, dataBase))
+  return {
+    name: 'treequiz-catalogue',
+    configResolved(config) {
+      build = config.command === 'build'
+      dataBase = loadEnv(config.mode, config.envDir || process.cwd(), 'VITE_').VITE_DATA_BASE || undefined
+    },
+    resolveId(id) {
+      if (id === CATALOGUE_ID) return '\0' + CATALOGUE_ID
+    },
+    load(id) {
+      if (id === '\0' + CATALOGUE_ID) return `export default ${JSON.stringify(scan().catalogue)}`
+    },
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const path = (req.url ?? '').split('?')[0]
+        const body = path === '/datasets.json'
+          ? Buffer.from(JSON.stringify(scan().catalogue))
+          : scan().emit.get(path.slice(1))
+        if (!body) return next()
+        res.setHeader('Content-Type', 'application/json')
+        res.end(body)
+      })
+    },
+    generateBundle() {
+      const { catalogue, emit } = scan()
+      for (const [fileName, source] of emit) this.emitFile({ type: 'asset', fileName, source })
+      this.emitFile({ type: 'asset', fileName: 'datasets.json', source: JSON.stringify(catalogue) })
+    },
+  }
+}
 
 /** Emit dist/sw.js and dist/manifest.webmanifest: pwa/sw.js with this build's
  *  file lists and a version hash written in. See sw.js for how it caches and
@@ -32,15 +130,17 @@ function serviceWorker(): Plugin {
         let source = readFileSync(here('pwa/sw.js'), 'utf8')
         hash.update(source)
 
-        // Trees and popup text are cached on first use; see LAZY in sw.js.
-        const lazy = (name: string) => /(tree|info)-[^/]*\.json$/.test(name)
+        // The trees are not the build's to keep: they are downloads, held in
+        // their own cache so a deploy never deletes them (engine/downloads.ts).
+        // The catalogue is always asked of the network, being how a page learns
+        // of newer trees.
+        const data = (name: string) => name.startsWith('data/') || name === 'datasets.json'
         const all = [...built, ...copied].sort()
-        if (!all.some(lazy)) throw new Error('No dataset assets in the build: have their names changed?')
+        if (!all.includes('datasets.json')) throw new Error('No catalogue in the build: has catalogue() gone?')
 
         const fills: [string, string][] = [
           ["const VERSION = 'dev'", `const VERSION = '${hash.digest('hex').slice(0, 12)}'`],
-          ['const FILES = []', `const FILES = ${JSON.stringify(all.filter((name) => !lazy(name)))}`],
-          ['const LAZY = []', `const LAZY = ${JSON.stringify(all.filter(lazy))}`],
+          ['const FILES = []', `const FILES = ${JSON.stringify(all.filter((name) => !data(name)))}`],
         ]
         for (const [from, to] of fills) {
           // Loud rather than quietly shipping a worker that caches nothing.
@@ -55,7 +155,7 @@ function serviceWorker(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), serviceWorker()],
+  plugins: [react(), catalogue(), serviceWorker()],
   // Relative, so one build works wherever it is put: at a domain's root or
   // under GitHub Pages' /TreeQuiz/. An absolute '/' left TaxoQuiz's Pages site
   // blank — every script requested from the domain root.
@@ -65,10 +165,9 @@ export default defineConfig({
     // Reaching the dev server from a phone over Tailscale; see TaxoQuiz's
     // vite.config.ts for why only `.ts.net` is allowed.
     allowedHosts: ['.ts.net'],
-    // The datasets are read from the repo's datasets/, one level above this
-    // project, rather than copied into it. Vite serves nothing outside its root
-    // by default, so without this the dev server 403s every tree — while the
-    // build, which does not apply the rule, works fine.
+    // The tests read the repo's datasets/, one level above this project, by
+    // glob, and Vite serves nothing outside its root by default. (The app's
+    // own trees come through catalogue()'s middleware, which is not bound by it.)
     fs: { allow: ['..'] },
   },
   build: {
