@@ -393,9 +393,11 @@ not, so every module missed the cache and, after a rebuild, fetched a file the
 server no longer had — a blank page. GitHub Pages sends only `Vary:
 Accept-Encoding`, so the live site was never hit; found testing the app build.
 
-**Not verified**: the app build (`VITE_DATA_BASE`) on a phone — run in a
-browser it lists the bundled trees and learns of Animals from the site — and two tabs at once
-(a `BroadcastChannel` re-reads copies in the other tab). The first test in
+The app build (`VITE_DATA_BASE`) was run on a real phone (18 Oct 2026),
+sideloaded from the release APK, and worked throughout.
+
+**Not verified**: two tabs at once (a `BroadcastChannel` re-reads copies in
+the other tab). The first test in
 `App.test.tsx` and `GuessInput.test.tsx` can pass 5s on a loaded machine —
 the baseline's took the same 3.7s under the same load.
 

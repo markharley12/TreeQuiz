@@ -3,6 +3,9 @@
 Find the secret leaf of a tree. Every guess shows where it branches off from the
 answer, and the nearer that branch point, the warmer the colour.
 
+**▶ Play it: [markharley12.github.io/TreeQuiz](https://markharley12.github.io/TreeQuiz/)** —
+in any browser, and it works offline once a tree is downloaded.
+
 TreeQuiz is [TaxoQuiz](https://github.com/markharley12/TaxoQuiz) with the
 biology taken out. TaxoQuiz's game, explore mode, colour scale, seeds, hints
 and phone layout all work on *any* tree. A dataset brings the tree and a short
@@ -18,19 +21,19 @@ about it.
 | **Maths** | 517 fields | 5 | [MSC2020](https://msc2020.org), the Mathematics Subject Classification, with a curated branch/area layer above its 63 subjects | ladder: branch → area → subject → section |
 | **Languages** | 415 languages | 14 | [Glottolog 5.3](https://glottolog.org)'s family tree, languages chosen by how many Wikipedias cover them | none: placed by the tree's shape alone |
 | **Instruments** | 428 instruments | 9 | The [Hornbostel–Sachs](https://en.wikipedia.org/wiki/Hornbostel%E2%80%93Sachs) classification, by what vibrates; instruments and their numbers from [Wikidata](https://www.wikidata.org/wiki/Property:P1762) | none |
-| **Animals** | 530 species | 21 | TaxoQuiz's hand-curated taxonomy | the Linnaean ladder |
+| **Animals** | 500 to 41,153 species | 85 | [Wikidata](https://www.wikidata.org)'s tree of life: every animal six or more Wikipedias cover, TaxoQuiz Full's data, played at a size you choose. Built locally and published as a release rather than committed | the Linnaean ladder |
 | **Physics** | 487 topics | 7 | [PhySH](https://physh.org), the American Physical Society's Physics Subject Headings: research areas and physical systems under their disciplines | none |
 | **Chemistry** | 465 chemicals | 14 | [ChEBI](https://www.ebi.ac.uk/chebi/)'s classes of chemical structure; elements and compounds chosen on Wikidata by how many Wikipedias cover them | none |
 | **Chess** | 446 openings | 11 | [Lichess's opening list](https://github.com/lichess-org/chess-openings), on the tree of the openings' own moves | none |
 | **Cities** | 622 cities | 5 | [Wikidata](https://www.wikidata.org)'s cities, countries and regions; continents and subregions from [Natural Earth](https://www.naturalearthdata.com) | ladder: continent → subregion → country |
 | **Plants** | 469 plants | 16 | [Wikidata](https://www.wikidata.org)'s taxonomy (parent taxon, P171), species and genera chosen by how many Wikipedias cover them | the Linnaean ladder |
-| **All animals** | 41,153 species | 85 | [Wikidata](https://www.wikidata.org)'s tree of life: every animal six or more Wikipedias cover, TaxoQuiz Full's data. Built locally and published as a release rather than committed | the Linnaean ladder |
 
 Each tree was picked to test something different. Maths is shallow with clean
 ranks. Languages has no ranks at all, so warmth comes from the tree's shape
 alone. Instruments is a classification whose codes *are* the tree: a violin is
 321.322-71 and a guitar 321.322-5, so they share 321.322, necked box lutes.
-Animals is TaxoQuiz's own data, and its game comes back out unchanged. Chess
+Animals is TaxoQuiz's own data at every size it had, from the 500
+best-known species to all 41,000, on one slider. Chess
 is a tree nobody drew: an opening *is* its moves, so two openings share exactly
 the moves they agree on. Cities is the one anybody can play, and the
 one where a ladder fits best: sharing a country is worth the same in Belgium
@@ -80,7 +83,9 @@ cd frontend && npm install && npm run dev      # http://localhost:5173
 ```
 
 The app needs no server: the engine runs in the browser, and the build is
-static files (`npm run build`, then serve `frontend/dist`). The dev server finds
+static files (`npm run build`, then serve `frontend/dist`); the live site is
+deployed from `main` by the Pages workflow. An Android app with every tree
+built in is `npm run android:apk` (see [docs/android.md](docs/android.md)). The dev server finds
 datasets when it starts, so restart it after adding one. In a terminal:
 
 ```bash
@@ -302,8 +307,7 @@ popup.
   shortened where a name only reads under its parent. The electrophone class
   names are TreeQuiz's own, following the 2011 MIMO revision that Wikidata's
   numbers use.
-- **Animals**: the taxonomy is TaxoQuiz's hand-curated tree.
-- **All animals**: species, names and parent taxa from
+- **Animals**: species, names and parent taxa from
   [Wikidata](https://www.wikidata.org) (CC0); where Wikidata calls one
   species another's synonym, the [Catalogue of Life](https://www.catalogueoflife.org)
   ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)) is asked too,

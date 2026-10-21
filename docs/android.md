@@ -54,8 +54,8 @@ and keeps the APK as an artifact.
   app-release.apk`, 4.8MB; checked with `apksigner verify --print-certs`:
   v2 scheme, `CN=TaxoQuiz, O=markharley12`, SHA-256 `85:62:B9:72:…:30:FC:1B:C2`.
   The ID differs, so it neither updates nor replaces TaxoQuiz on a phone.
-- **Not tested on a phone or emulator** when written: the APK was inspected
-  (package, SDK levels, bundled trees) and the app build run in a browser.
+- **Tested on a real phone** (18 Oct 2026): the owner sideloaded the
+  release APK (14.5MB, every tree built in) and it worked throughout.
 
 Capacitor 8 wrapped `frontend/dist` in a native shell (`capacitor.config.ts`,
 the Gradle project in `frontend/android/`). The web app is served from inside
